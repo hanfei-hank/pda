@@ -81,6 +81,7 @@ library:
   - mustache
   - project-template
   - repline
+  - rocksdb-haskell-ng
 
 executables:
   pda:
