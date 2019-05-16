@@ -3,6 +3,7 @@ module Service.FCoin.API where
 
 import Seal.Prelude
 import Data.Aeson
+import Text.Casing
 
 data Item = Item {
     price :: Double
@@ -41,15 +42,18 @@ data Order = Order {
 , odPrice	:: String	-- 下单价格
 , odAmount	:: String	-- 下单数量
 , odState	:: String	-- 订单状态
-, odExecuted_value	:: String	-- 已成交
-, odFilled_amount	:: String	-- 成交量
-, odFill_fees	:: String	-- 手续费
-, odCreated_at	:: Integer	-- 创建时间
+, odExecutedValue	:: String	-- 已成交
+, odFilledAmount	:: String	-- 成交量
+, odFillFees	:: String	-- 手续费
+, odCreatedAt	:: Integer	-- 创建时间
 , odSource	:: String	-- 来源
 } deriving (Generic, Show)
 
+jsonLabel :: String -> String
+jsonLabel = toQuietSnake . dropPrefix . fromHumps
+
 customOptions = defaultOptions
-                { fieldLabelModifier = drop 2
+                { fieldLabelModifier = jsonLabel
                 }
 
 instance FromJSON Order where
@@ -58,8 +62,8 @@ instance FromJSON Order where
 -- type OrderMap = Map String Order
 
 data Response a = Response {
-    rStatus  :: Int
-  , rData    :: a
+    rpStatus  :: Int
+  , rpData    :: a
 } deriving (Show, Generic)
 
 instance FromJSON a => FromJSON (Response a) where

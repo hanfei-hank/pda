@@ -22,6 +22,7 @@ dependencies:
 - aeson
 - base >= 4.11 && < 10
 - base64-bytestring
+- casing
 - cryptonite
 - hclj
 - http-conduit

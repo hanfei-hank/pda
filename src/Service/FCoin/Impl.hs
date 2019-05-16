@@ -13,7 +13,7 @@ import Network.HTTP.Simple as HTTP
 import Data.ByteArray as ByteArray
 import Crypto.Hash
 import Crypto.MAC.HMAC
-import Service.FCoin.API
+import Service.FCoin.API as API
 
 toDepth :: Text -> Maybe Depth
 toDepth = decode . encodeUtf8
@@ -74,5 +74,5 @@ start = do
 serverTime :: IO ()
 serverTime = do
     let request = "GET https://api.fcoin.com/v2/public/server-time"
-    response <- httpBS request
+    response :: Integer <- rpData . getResponseBody <$> httpJSON request
     putTextLn $ toText $ show response
