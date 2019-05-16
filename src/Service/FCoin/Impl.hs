@@ -5,47 +5,31 @@ module Service.FCoin.Impl where
 import           Seal.Prelude
 import           Seal.Prelude.Unsafe ((!!))
 import           Data.Aeson
+import qualified Data.ByteString.Base64 as B64
 import qualified Network.WebSockets  as WS
 import Wuss
+import Network.HTTP.Simple as HTTP
 
-data Item = Item {
-    price :: Double
-  , amount :: Double
-} deriving (Show)
-
-data Depth = Depth {
-    dType :: Text
-  , dBids   :: [Item]
-  , dAsks   :: [Item]
-  , dts     :: Integer
-} deriving (Show)
-
-instance FromJSON Depth where
-    parseJSON = withObject "Depth" $ \v -> Depth
-        <$> v .: "type"
-        <*> fmap toItem (v .: "bids")
-        <*> fmap toItem (v .: "asks")
-        <*> v .: "ts"
-      where
-        toItem [] = []
-        toItem (p:a:rest) = Item p a : toItem rest
+import Data.ByteArray as ByteArray
+import Crypto.Hash
+import Crypto.MAC.HMAC
+import Service.FCoin.API
 
 toDepth :: Text -> Maybe Depth
 toDepth = decode . encodeUtf8
 
 --------------------------------------------------------------------------------
-data Suggestion = Suggestion {
-    minBidPrice :: Double
-  , maxBidPrice :: Double
-  , minAskPrice :: Double
-  , maxAskPrice :: Double
-} deriving (Show)
-
 toSuggestion :: (Int, Int) -> Depth -> Suggestion
 toSuggestion (ifrom, ito) Depth{..} = 
     Suggestion 
         (price $ dBids !! ito) (price $ dBids !! ifrom)
         (price $ dAsks !! ifrom) (price $ dAsks !! ito)
+
+
+sign :: ByteString -> ByteString -> ByteString
+sign secret msg = 
+        let digest :: Digest SHA1 = hmacGetDigest $ hmac secret $ B64.encode msg
+        in B64.encode $ ByteArray.convert digest
 
 app :: TVar Suggestion -> WS.ClientApp ()
 app tsuggestion conn = do
@@ -87,5 +71,8 @@ start = do
   runSecureClient "api.fcoin.com" 443 "/v2/ws" $ app tsuggestion
     
 
-
-
+serverTime :: IO ()
+serverTime = do
+    let request = "GET https://api.fcoin.com/v2/public/server-time"
+    response <- httpBS request
+    putTextLn $ toText $ show response

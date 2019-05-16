@@ -21,7 +21,11 @@ description:         Please see the README on Github at <https://github.com/gith
 dependencies:
 - aeson
 - base >= 4.11 && < 10
+- base64-bytestring
+- cryptonite
 - hclj
+- http-conduit
+- memory
 - network
 - rio >= 0.1.8.0
 - seal-prelude

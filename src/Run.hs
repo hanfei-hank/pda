@@ -25,6 +25,11 @@ fcoin = do
     liftIO $ FCoin.start
     return "ok"
 
+serverTime :: Repl Text
+serverTime = do
+    liftIO $ FCoin.serverTime
+    return "ok"
+    
 -- render :: Text -> Text -> Repl Text
 -- render templateFile targetFile = liftIO $ do
 --   compiled <- localAutomaticCompile $ toString templateFile
@@ -34,6 +39,6 @@ fcoin = do
 --       writeFileUtf8 (toString targetFile) $ substituteValue template value
 --       return "success!"
 
-makeRepl ['echo, 'proxy, 'fcoin]
+makeRepl ['echo, 'proxy, 'fcoin, 'serverTime]
 
 
