@@ -19,10 +19,15 @@ extra-source-files:
 description:         Please see the README on Github at <https://github.com/githubuser/pda#readme>
 
 dependencies:
+- aeson
 - base >= 4.11 && < 10
 - hclj
+- network
 - rio >= 0.1.8.0
 - seal-prelude
+- text
+- websockets
+- wuss
 
 ghc-options:
 - -Wall
@@ -82,7 +87,7 @@ library:
   - mustache
   - project-template
   - repline
-  - rocksdb-haskell-ng
+  # - rocksdb-haskell-ng
 
 executables:
   pda:

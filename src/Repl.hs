@@ -34,5 +34,5 @@ ini = liftIO $ putTextLn "Welcome!"
 repl :: IO ()
 repl = do
   runner <- new
-  let cmd = liftIO . runner
+  let cmd s = liftIO $ runner $ "(" <> s <> ")"
   evalRepl (pure "pda> ") cmd options (Just ':') (Word completer) ini
