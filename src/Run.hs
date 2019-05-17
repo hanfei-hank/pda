@@ -31,7 +31,6 @@ serverTime = do
     liftIO $ FCoin.serverTime
     -- return "ok"
 
-apiConfig = APIConfig "64b30b6b26df481ebc0b904b6900cea3" "c3873618caca4c3a9299026ef6a627c2"
 getOrder :: Text -> Repl Text
 getOrder oid = do
     ts <- serverTime
