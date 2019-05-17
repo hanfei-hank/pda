@@ -69,22 +69,19 @@ data Response a = Response {
 instance FromJSON a => FromJSON (Response a) where
   parseJSON = genericParseJSON customOptions
 
-data Side = Buy | Sell
-
 type OrderID = String
+type Symbol = String
+type Price = Double
+type Amount = Double
 
-data Request 
-  = CreateOrder {
-      rqSymbol  :: String
-    , rqSide    :: String
-    , rqType    :: String
-    , rqPrice   :: Double
-    , rqAmount  :: Double
-  } 
-  | GetOrder OrderID
-  | CancelOrder OrderID
+data OrderRequest a where
+  Buy :: Symbol -> Price -> Amount -> OrderRequest OrderID
+  Sell :: Symbol -> Price -> Amount -> OrderRequest OrderID
+  GetOrders :: Symbol -> [String] -> OrderRequest [Order]
+  GetOrder :: OrderID -> OrderRequest Order
+  CancelOrder :: OrderID -> OrderRequest Bool
   
 data APIConfig = APIConfig {
-    apiKey :: String
+    apiKey :: ByteString
   , apiSecret :: ByteString
 } deriving (Show)

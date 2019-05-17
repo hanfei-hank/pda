@@ -71,8 +71,27 @@ start = do
   runSecureClient "api.fcoin.com" 443 "/v2/ws" $ app tsuggestion
     
 
-serverTime :: IO ()
+serverTime :: IO Integer
 serverTime = do
     let request = "GET https://api.fcoin.com/v2/public/server-time"
     response :: Integer <- rpData . getResponseBody <$> httpJSON request
-    putTextLn $ toText $ show response
+    return response
+
+orderRequest :: FromJSON a => APIConfig -> Integer -> OrderRequest a -> IO a
+orderRequest APIConfig{..} ts = \case
+    GetOrders sym sts -> do
+        call $ get $ "https://api.fcoin.com/v2/orders?limit=20&states=" <> mconcat (intersperse "," sts) <> "&symbol=" <> sym
+    GetOrder odID -> do
+        call $ get $ "https://api.fcoin.com/v2/orders/" <> odID
+    CancelOrder odID -> do
+        call $ get $ "https://api.fcoin.com/v2/orders/" <> odID <> "/submit-cancel"
+
+  where
+    call req = rpData . getResponseBody <$> httpJSON req
+    sig = sign apiSecret . fromString
+    fcHeaders sig = 
+                addRequestHeader "FC-ACCESS-KEY" apiKey
+              . addRequestHeader "FC-ACCESS-SIGNATURE" sig
+              . addRequestHeader "FC-ACCESS-TIMESTAMP" (fromString $ show ts)
+    get :: String -> HTTP.Request
+    get s = fcHeaders (sig $ "GET" <> s <> show ts) . fromString $ "GET " <> s
