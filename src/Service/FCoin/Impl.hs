@@ -19,11 +19,11 @@ toDepth :: Text -> Maybe Depth
 toDepth = decode . encodeUtf8
 
 --------------------------------------------------------------------------------
-toSuggestion :: (Int, Int) -> Depth -> Suggestion
-toSuggestion (ifrom, ito) Depth{..} = 
-    Suggestion 
-        (price $ dBids !! ito) (price $ dBids !! ifrom)
-        (price $ dAsks !! ifrom) (price $ dAsks !! ito)
+-- toSuggestion :: (Int, Int) -> Depth -> Suggestion
+-- toSuggestion (ifrom, ito) Depth{..} = 
+--     Suggestion 
+--         (depth ^. dBids . ix ito . price) (price $ dBids !! ifrom)
+--         (price $ dAsks !! ifrom) (price $ dAsks !! ito)
 
 
 sign :: ByteString -> ByteString -> ByteString
@@ -31,8 +31,8 @@ sign secret msg =
         let digest :: Digest SHA1 = hmacGetDigest $ hmac secret $ B64.encode msg
         in B64.encode $ ByteArray.convert digest
 
-app :: TVar Suggestion -> WS.ClientApp ()
-app tsuggestion conn = do
+app :: TVar Depth -> WS.ClientApp ()
+app tdepth conn = do
     putTextLn "Connected!"
 
     -- Read from stdin and write to WS
@@ -55,20 +55,21 @@ app tsuggestion conn = do
                         putTextLn $ "ignore : " <> msg
                         go (n+1) ts
                     Just depth  -> do
-                        let s = toSuggestion (8, 16) depth
-                        putTextLn $ toText $ show s
-                        atomically $ writeTVar tsuggestion s
-                        go (n+1) (dts depth)
+                        -- let s = toSuggestion (8, 16) depth
+                        -- putTextLn $ toText $ show s
+                        atomically $ writeTVar tdepth depth
+                        go (n+1) (_dts depth)
     
     go 0 0
     
   
 --------------------------------------------------------------------------------
-start :: IO ()
+start :: IO (TVar Depth)
 start = do
   -- runSecureClient "echo.websocket.org" 443 "/" app
-  tsuggestion <- newTVarIO $ Suggestion 0 0 0 0
-  runSecureClient "api.fcoin.com" 443 "/v2/ws" $ app tsuggestion
+  tdepth <- newTVarIO def
+  async $ runSecureClient "api.fcoin.com" 443 "/v2/ws" $ app tdepth
+  return tdepth
     
 
 serverTime :: IO Integer

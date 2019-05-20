@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 
 module Service.FCoin.API where
 
@@ -6,16 +7,18 @@ import Data.Aeson
 import Text.Casing
 
 data Item = Item {
-    price :: Double
-  , amount :: Double
+    _price :: Double
+  , _amount :: Double
 } deriving (Show)
 
 data Depth = Depth {
-    dType :: Text
-  , dBids   :: [Item]
-  , dAsks   :: [Item]
-  , dts     :: Integer
+    _dType :: Text
+  , _dBids   :: [Item]
+  , _dAsks   :: [Item]
+  , _dts     :: Integer
 } deriving (Show)
+
+instance Default Depth where def = Depth "" def def def
 
 instance FromJSON Depth where
     parseJSON = withObject "Depth" $ \v -> Depth
@@ -85,3 +88,6 @@ data APIConfig = APIConfig {
     apiKey :: ByteString
   , apiSecret :: ByteString
 } deriving (Show)
+
+makeLenses ''Item
+makeLenses ''Depth

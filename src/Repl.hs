@@ -19,7 +19,7 @@ help args = liftIO $ print $ "Help: " ++ show args
 
 quit :: [String] -> Repl ()
 quit args = do
-  _ <- liftIO $ print $ "cowsay" ++ " " ++ unwords args
+  _ <- liftIO $ print $ "bye" ++ " " ++ unwords args
   abort
 
 options :: [(String, [String] -> Repl ())]
@@ -33,6 +33,6 @@ ini = liftIO $ putTextLn "Welcome!"
 
 repl :: IO ()
 repl = do
-  runner <- new
+  runner <- newRepl
   let cmd s = liftIO $ runner $ "(" <> s <> ")"
   evalRepl (pure "pda> ") cmd options (Just ':') (Word completer) ini
