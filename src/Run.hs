@@ -1,17 +1,18 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Run (newRepl, runFile) where
 
--- import Data.Decimal
+import GHC.Conc (retry)
+import Prelude (read)
 import Seal.Prelude
 import Seal.Lang.Clj.Repl 
 import Seal.Lang.Clj.TH 
 import Seal.Lang.Clj.Types.Runtime
 import Text.Mustache
 import Text.ProjectTemplate
--- import UnliftIO.Concurrent (threadDelay)
 
 import Service.TCPProxy
 import Service.FCoin.API
@@ -52,6 +53,11 @@ makeNativeModule "user" ['proxy, 'fcoin, 'serverTime, 'sleep]
 initRepl :: Repl ()
 initRepl = do
     loadNativeModule userModule
+    defNativeVar "*buy-order" tTyBool
+    defNativeVar "*price-buy-order" tTyDecimal
+    defNativeVar "*sell-order" tTyBool
+    defNativeVar "*price-sell-order" tTyDecimal
+
     forM_ [1..20] $ \(n :: Int) -> do
         let tn = toText $ show n
         defNativeVar ("*price-buy" <> tn) tTyDecimal
@@ -61,17 +67,30 @@ initRepl = do
 
     depthRef <- newIORef def
 
+    refBuyOrder :: IORef (Maybe Order) <- newIORef Nothing
+    refSellOrder :: IORef (Maybe Order) <- newIORef Nothing
+
     installNativeVarReducer $ \n -> 
         let 
-            buyPrice i = do
+            depthPrice da i = do
                 depth <- readIORef depthRef
-                let Just p = depth ^? dBids . ix (i - 1) . price
-                return $ toTermLiteral (p)
+                let Just p = depth ^? da . ix (i - 1) . price
+                return $ toTermLiteral p
 
-            sellPrice i = do
-                depth <- readIORef depthRef
-                let Just p = depth ^? dAsks . ix (i - 1) . price
-                return $ toTermLiteral (p)
+            buyPrice = depthPrice dBids
+            sellPrice = depthPrice dAsks
+
+            orderPrice ref = do
+                mod <- readIORef ref
+                case mod of
+                    Nothing -> return $ toTermLiteral (0.0 :: Double)
+                    Just od -> return $ toTermLiteral $ read @Double $ od ^. odPrice
+            
+            isJustRef ref = do
+                mv <- readIORef ref
+                case mv of
+                    Nothing -> return $ toTermLiteral False
+                    Just _  -> return $ toTermLiteral True
         -- putTextLn $ "reduce native var " <> n
         in case n of
             "*price-buy1" -> buyPrice 1
@@ -105,6 +124,12 @@ initRepl = do
             "*price-sell13" -> sellPrice 13
             "*price-sell14" -> sellPrice 14
             "*price-sell15" -> sellPrice 15
+
+            "*buy-order"    -> isJustRef refBuyOrder
+            "*price-buy-order" -> orderPrice refBuyOrder
+            "*sell-order"   -> isJustRef refSellOrder
+            "*price-sell-order" -> orderPrice refSellOrder
+
             -- _ -> return $ toTermLiteral (10.0 :: Decimal)
             _ -> throwString $ "unknown native var: " <> toString n
 
@@ -116,7 +141,14 @@ initRepl = do
         orders sym = do
             ts <- serverTime
             cfg <- readIORef cfgRef
-            orders <- liftIO $ FCoin.orderRequest cfg ts $ GetOrders (toString sym) ["submitted"]
+            orders <- liftIO $ FCoin.orderRequest cfg ts $ GetOrders (toString sym) ["submitted", "partial_filled"]
+            let sellorder = listToMaybe [order | order <- orders, _odSide order == "sell"]
+                buyorder  = listToMaybe [order | order <- orders, _odSide order == "buy"] 
+            writeIORef refSellOrder sellorder
+            writeIORef refBuyOrder buyorder
+            putStrLn $ "sell order: " <> show sellorder
+            putStrLn $ "buy order: " <> show buyorder
+
             return $ toText $ show orders
 
         getOrder :: Text -> Repl Text
@@ -133,11 +165,17 @@ initRepl = do
 
         getMarket :: Text -> Repl Text
         getMarket sym = do
-            readTVarIO tdepth >>= writeIORef depthRef
+            lastTs <- view dts <$> readIORef depthRef
+            d <- atomically $ do
+                d <- readTVar tdepth
+                if d ^. dts <= lastTs
+                    then retry
+                    else return d
+            writeIORef depthRef d
             return "ok"
 
     loadNativeModule ("fcoin",
-                       [ $(defRNativeQ "orders" [t| Text -> Text |] [| orders |])
+                       [ $(defRNativeQ "get-orders" [t| Text -> Text |] [| orders |])
                        , $(defRNativeQ "get-order" [t| Text -> Text |] [| getOrder |])
                        , $(defRNativeQ "set-api" [t| Text -> Text -> Text |] [| setApi |])
                        , $(defRNativeQ "get-market" [t| Text -> Text |] [| getMarket |])

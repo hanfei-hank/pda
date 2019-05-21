@@ -38,18 +38,18 @@ data Suggestion = Suggestion {
 } deriving (Show)
 
 data Order = Order {
-  odId	:: OrderID	-- 订单 ID
-, odSymbol	:: String	-- 交易对
-, odSide	:: String	-- 交易方向（buy, sell）
-, odType	:: String	-- 订单类型（limit，market）
-, odPrice	:: String	-- 下单价格
-, odAmount	:: String	-- 下单数量
-, odState	:: String	-- 订单状态
-, odExecutedValue	:: String	-- 已成交
-, odFilledAmount	:: String	-- 成交量
-, odFillFees	:: String	-- 手续费
-, odCreatedAt	:: Integer	-- 创建时间
-, odSource	:: String	-- 来源
+  _odId	:: OrderID	-- 订单 ID
+, _odSymbol	:: String	-- 交易对
+, _odSide	:: String	-- 交易方向（buy, sell）
+, _odType	:: String	-- 订单类型（limit，market）
+, _odPrice	:: String	-- 下单价格
+, _odAmount	:: String	-- 下单数量
+, _odState	:: String	-- 订单状态
+, _odExecutedValue	:: String	-- 已成交
+, _odFilledAmount	:: String	-- 成交量
+, _odFillFees	:: String	-- 手续费
+, _odCreatedAt	:: Integer	-- 创建时间
+, _odSource	:: String	-- 来源
 } deriving (Generic, Show)
 
 jsonLabel :: String -> String
@@ -91,3 +91,4 @@ data APIConfig = APIConfig {
 
 makeLenses ''Item
 makeLenses ''Depth
+makeLenses ''Order

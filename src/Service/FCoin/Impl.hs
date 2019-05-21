@@ -39,7 +39,7 @@ app tdepth conn = do
 --     let loop = do
 --             threadDelay 30000000
 --              WS.sendTextData conn "xxx" >> loop
-    let subCmd :: Text = "{\"cmd\":\"sub\",\"args\":[\"depth.L20.btcusdt\"]}"
+    let subCmd :: Text = "{\"cmd\":\"sub\",\"args\":[\"depth.L20.eosusdt\"]}"
     WS.sendTextData conn subCmd
 --     loop
     -- writes WS data to stdout
