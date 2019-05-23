@@ -30,13 +30,6 @@ instance FromJSON Depth where
         toItem [] = []
         toItem (p:a:rest) = Item p a : toItem rest
 
-data Suggestion = Suggestion {
-    minBidPrice :: Double
-  , maxBidPrice :: Double
-  , minAskPrice :: Double
-  , maxAskPrice :: Double
-} deriving (Show)
-
 data Order = Order {
   _odId	:: OrderID	-- 订单 ID
 , _odSymbol	:: String	-- 交易对

@@ -19,12 +19,6 @@ toDepth :: Text -> Maybe Depth
 toDepth = decode . encodeUtf8
 
 --------------------------------------------------------------------------------
--- toSuggestion :: (Int, Int) -> Depth -> Suggestion
--- toSuggestion (ifrom, ito) Depth{..} = 
---     Suggestion 
---         (depth ^. dBids . ix ito . price) (price $ dBids !! ifrom)
---         (price $ dAsks !! ifrom) (price $ dAsks !! ito)
-
 
 sign :: ByteString -> ByteString -> ByteString
 sign secret msg = 
@@ -55,7 +49,6 @@ app tdepth conn = do
                         -- putTextLn $ "ignore : " <> msg
                         go (n+1) ts
                     Just depth  -> do
-                        -- let s = toSuggestion (8, 16) depth
                         -- putTextLn $ toText $ show s
                         atomically $ writeTVar tdepth depth
                         go (n+1) (_dts depth)

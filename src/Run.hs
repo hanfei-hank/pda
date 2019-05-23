@@ -89,7 +89,8 @@ initRepl = do
                 mod <- readIORef ref
                 case mod of
                     Nothing -> return $ toTermLiteral (0.0 :: Double)
-                    Just od -> return $ toTermLiteral $ read @Double $ od ^. odPrice
+                    Just od -> 
+                        return $ toTermLiteral $ read @Double $ od ^. odPrice
             
             isJustRef ref = do
                 mv <- readIORef ref
@@ -97,12 +98,12 @@ initRepl = do
                     Nothing -> return $ toTermLiteral False
                     Just v  -> return $ toTerm $ toJSON v
         -- putTextLn $ "reduce native var " <> n
-        in if | Just i <- toString n ^? prefixed "*price-buy" -> buyPrice $ read i
-              | Just i <- toString n ^? prefixed "*price-sell" -> sellPrice $ read i
-              | n == "*buy-order"    -> isJustRef refBuyOrder
-              | n == "*price-buy-order" -> orderPrice refBuyOrder
-              | n == "*sell-order"   -> isJustRef refSellOrder
+        in if | n == "*price-buy-order" -> orderPrice refBuyOrder
               | n == "*price-sell-order" -> orderPrice refSellOrder
+              | n == "*buy-order"    -> isJustRef refBuyOrder
+              | n == "*sell-order"   -> isJustRef refSellOrder
+              | Just i <- toString n ^? prefixed "*price-buy" -> buyPrice $ read i
+              | Just i <- toString n ^? prefixed "*price-sell" -> sellPrice $ read i
               | otherwise -> throwString $ "unknown native var: " <> toString n
 
     tdepth <- liftIO FCoin.start
