@@ -2,7 +2,7 @@
 -- fcoin client
 module Service.FCoin.Impl where
 
-import           Seal.Prelude
+import           Seal.Prelude hiding ((.=))
 import           Seal.Prelude.Unsafe ((!!))
 import           Data.Aeson
 import qualified Data.ByteString.Base64 as B64
@@ -52,7 +52,7 @@ app tdepth conn = do
                 msg <- WS.receiveData conn
                 case toDepth msg of
                     Nothing -> do
-                        putTextLn $ "ignore : " <> msg
+                        -- putTextLn $ "ignore : " <> msg
                         go (n+1) ts
                     Just depth  -> do
                         -- let s = toSuggestion (8, 16) depth
@@ -78,6 +78,9 @@ serverTime = do
     response :: Integer <- rpData . getResponseBody <$> httpJSON request
     return response
 
+buy, sell, limit :: Text
+buy = "buy";    sell = "sell";  limit = "limit"
+
 orderRequest :: FromJSON a => APIConfig -> Integer -> OrderRequest a -> IO a
 orderRequest APIConfig{..} ts = \case
     GetOrders sym sts -> do
@@ -85,7 +88,18 @@ orderRequest APIConfig{..} ts = \case
     GetOrder odID -> do
         call $ get $ "https://api.fcoin.com/v2/orders/" <> odID
     CancelOrder odID -> do
-        call $ get $ "https://api.fcoin.com/v2/orders/" <> odID <> "/submit-cancel"
+        httpNoBody =<< post ("https://api.fcoin.com/v2/orders/" <> odID <> "/submit-cancel") "" (object [])
+        return ()
+    GetBalance -> do
+        call $ get $ "https://api.fcoin.com/v2/accounts/balance"
+    Sell s p a -> 
+        call =<< post "https://api.fcoin.com/v2/orders" 
+                ("amount=" <> show a <> "&price=" <> show p <> "&side=sell&symbol=" <> s <> "&type=limit")
+                (object ["amount" .= show a, "price" .= show p, "side" .= sell, "symbol" .= s, "type" .= limit])
+    Buy s p a -> 
+        call =<< post "https://api.fcoin.com/v2/orders" 
+                ("amount=" <> show a <> "&price=" <> show p <> "&side=buy&symbol=" <> s <> "&type=limit")
+                (object ["amount" .= show a, "price" .= show p, "side" .= buy, "symbol" .= s, "type" .= limit])
 
   where
     call req = rpData . getResponseBody <$> httpJSON req
@@ -96,3 +110,11 @@ orderRequest APIConfig{..} ts = \case
               . addRequestHeader "FC-ACCESS-TIMESTAMP" (fromString $ show ts)
     get :: String -> HTTP.Request
     get s = fcHeaders (sig $ "GET" <> s <> show ts) . fromString $ "GET " <> s
+
+    post :: String -> String -> Value -> IO HTTP.Request
+    post s ps v = do
+        let presig = "POST" <> s <> show ts <> ps
+            postsig = sig presig
+        putStrLn $ presig <> " -> " 
+        putStrLn $ postsig
+        return $ setRequestBodyJSON v . fcHeaders postsig . fromString $ "POST " <> s

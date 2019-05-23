@@ -62,6 +62,9 @@ customOptions = defaultOptions
 instance FromJSON Order where
   parseJSON = genericParseJSON customOptions
 
+instance ToJSON Order where
+  toJSON = genericToJSON customOptions
+
 -- type OrderMap = Map String Order
 
 data Response a = Response {
@@ -82,7 +85,8 @@ data OrderRequest a where
   Sell :: Symbol -> Price -> Amount -> OrderRequest OrderID
   GetOrders :: Symbol -> [String] -> OrderRequest [Order]
   GetOrder :: OrderID -> OrderRequest Order
-  CancelOrder :: OrderID -> OrderRequest Bool
+  CancelOrder :: OrderID -> OrderRequest ()
+  GetBalance  :: OrderRequest Value
   
 data APIConfig = APIConfig {
     apiKey :: ByteString

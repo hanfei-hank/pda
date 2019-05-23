@@ -7,6 +7,11 @@ module Run (newRepl, runFile) where
 
 import GHC.Conc (retry)
 import Prelude (read)
+import Data.Decimal
+import qualified RIO.HashMap as HM
+import Data.Aeson -- (Value(..))
+import Data.Aeson.Lens
+import Data.List.Lens
 import Seal.Prelude
 import Seal.Lang.Clj.Repl 
 import Seal.Lang.Clj.TH 
@@ -90,48 +95,15 @@ initRepl = do
                 mv <- readIORef ref
                 case mv of
                     Nothing -> return $ toTermLiteral False
-                    Just _  -> return $ toTermLiteral True
+                    Just v  -> return $ toTerm $ toJSON v
         -- putTextLn $ "reduce native var " <> n
-        in case n of
-            "*price-buy1" -> buyPrice 1
-            "*price-buy2" -> buyPrice 2
-            "*price-buy3" -> buyPrice 3
-            "*price-buy4" -> buyPrice 4
-            "*price-buy5" -> buyPrice 5
-            "*price-buy6" -> buyPrice 6
-            "*price-buy7" -> buyPrice 7
-            "*price-buy8" -> buyPrice 8
-            "*price-buy9" -> buyPrice 9
-            "*price-buy10" -> buyPrice 10
-            "*price-buy11" -> buyPrice 11
-            "*price-buy12" -> buyPrice 12
-            "*price-buy13" -> buyPrice 13
-            "*price-buy14" -> buyPrice 14
-            "*price-buy15" -> buyPrice 15
-
-            "*price-sell1" -> sellPrice 1
-            "*price-sell2" -> sellPrice 2
-            "*price-sell3" -> sellPrice 3
-            "*price-sell4" -> sellPrice 4
-            "*price-sell5" -> sellPrice 5
-            "*price-sell6" -> sellPrice 6
-            "*price-sell7" -> sellPrice 7
-            "*price-sell8" -> sellPrice 8
-            "*price-sell9" -> sellPrice 9
-            "*price-sell10" -> sellPrice 10
-            "*price-sell11" -> sellPrice 11
-            "*price-sell12" -> sellPrice 12
-            "*price-sell13" -> sellPrice 13
-            "*price-sell14" -> sellPrice 14
-            "*price-sell15" -> sellPrice 15
-
-            "*buy-order"    -> isJustRef refBuyOrder
-            "*price-buy-order" -> orderPrice refBuyOrder
-            "*sell-order"   -> isJustRef refSellOrder
-            "*price-sell-order" -> orderPrice refSellOrder
-
-            -- _ -> return $ toTermLiteral (10.0 :: Decimal)
-            _ -> throwString $ "unknown native var: " <> toString n
+        in if | Just i <- toString n ^? prefixed "*price-buy" -> buyPrice $ read i
+              | Just i <- toString n ^? prefixed "*price-sell" -> sellPrice $ read i
+              | n == "*buy-order"    -> isJustRef refBuyOrder
+              | n == "*price-buy-order" -> orderPrice refBuyOrder
+              | n == "*sell-order"   -> isJustRef refSellOrder
+              | n == "*price-sell-order" -> orderPrice refSellOrder
+              | otherwise -> throwString $ "unknown native var: " <> toString n
 
     tdepth <- liftIO FCoin.start
     cfgRef <- newIORef $ APIConfig "" ""
@@ -158,6 +130,17 @@ initRepl = do
             order <- liftIO $ FCoin.orderRequest cfg ts $ GetOrder $ toString oid
             return $ toText $ show order
 
+        getBalance :: FunApp -> [Term Name] -> Repl (Term Name)
+        getBalance _ _ = do
+            putTextLn "get-balance"
+            ts <- serverTime
+            cfg <- readIORef cfgRef
+            balances <- liftIO $ FCoin.orderRequest cfg ts GetBalance
+            let cs = balances ^.. values . key "currency" . _String
+                mb =  Object $ HM.fromList (zip cs $ balances ^.. values)
+            -- putStrLn $ show mb
+            return $ toTerm mb
+
         setApi :: Text -> Text -> Repl Text
         setApi key secret = do
             writeIORef cfgRef $ APIConfig (encodeUtf8 key) (encodeUtf8 secret)
@@ -174,17 +157,40 @@ initRepl = do
             writeIORef depthRef d
             return "ok"
 
+        newOrder :: _ -> Text -> Decimal -> Decimal -> Repl Text
+        newOrder dir sym p a = do
+            ts <- serverTime
+            cfg <- readIORef cfgRef
+            oid <- liftIO $ FCoin.orderRequest cfg ts $ dir (toString sym) (toDouble p) (toDouble a)
+            putStrLn oid
+            return $ toText oid
+          where
+            toDouble :: Decimal -> Double
+            toDouble = fromRational . toRational
+
+        cancelOrder :: Text -> Repl Text
+        cancelOrder oid = do
+            ts <- serverTime
+            cfg <- readIORef cfgRef
+            ret <- liftIO $ FCoin.orderRequest cfg ts $ CancelOrder $ toString oid
+            putStrLn $ show ret
+            return $ toText $ show ret
+
     loadNativeModule ("fcoin",
                        [ $(defRNativeQ "get-orders" [t| Text -> Text |] [| orders |])
                        , $(defRNativeQ "get-order" [t| Text -> Text |] [| getOrder |])
                        , $(defRNativeQ "set-api" [t| Text -> Text -> Text |] [| setApi |])
                        , $(defRNativeQ "get-market" [t| Text -> Text |] [| getMarket |])
+                       , $(defRNativeQ "sell" [t| Text -> Decimal -> Decimal -> Text |] [| newOrder Sell |])
+                       , $(defRNativeQ "buy" [t| Text -> Decimal -> Decimal -> Text |] [| newOrder Buy |])
+                       , $(defRNativeQ "cancel-order" [t| Text -> Text |] [| cancelOrder |])
+                       , defRNative "get-balance" getBalance (funType (tTyObject TyAny) []) "get balance"
                        ])
 
 
     -- debug 
-    store <- getRefStore
-    putStrLn $ show store
+    -- store <- getRefStore
+    -- putStrLn $ show store
 
     
 

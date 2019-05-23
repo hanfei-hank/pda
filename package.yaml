@@ -24,8 +24,11 @@ dependencies:
 - base64-bytestring
 - casing
 - cryptonite
+- Decimal
 - hclj
 - http-conduit
+- lens
+- lens-aeson
 - memory
 - network
 - rio >= 0.1.8.0
