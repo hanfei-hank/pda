@@ -34,5 +34,10 @@ ini = liftIO $ putTextLn "Welcome!"
 repl :: IO ()
 repl = do
   runner <- newRepl
-  let cmd s = liftIO $ runner $ "(" <> s <> ")"
+  let cmd s = liftIO $ runner $ toCmd s
   evalRepl (pure "pda> ") cmd options (Just ':') (Word completer) ini
+
+toCmd :: String -> String
+toCmd s = case s of
+    '(':_ -> s
+    _ -> "(" <> s <> ")"

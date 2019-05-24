@@ -58,9 +58,9 @@ makeNativeModule "user" ['proxy, 'fcoin, 'serverTime, 'sleep]
 initRepl :: Repl ()
 initRepl = do
     loadNativeModule userModule
-    defNativeVar "*buy-order" tTyBool
+    defNativeVar "*buy-orders" tTyBool
     defNativeVar "*price-buy-order" tTyDecimal
-    defNativeVar "*sell-order" tTyBool
+    defNativeVar "*sell-orders" tTyBool
     defNativeVar "*price-sell-order" tTyDecimal
 
     forM_ [1..20] $ \(n :: Int) -> do
@@ -72,8 +72,8 @@ initRepl = do
 
     depthRef <- newIORef def
 
-    refBuyOrder :: IORef (Maybe Order) <- newIORef Nothing
-    refSellOrder :: IORef (Maybe Order) <- newIORef Nothing
+    refBuyOrder :: IORef [Order] <- newIORef []
+    refSellOrder :: IORef [Order] <- newIORef []
 
     installNativeVarReducer $ \n -> 
         let 
@@ -88,20 +88,20 @@ initRepl = do
             orderPrice ref = do
                 mod <- readIORef ref
                 case mod of
-                    Nothing -> return $ toTermLiteral (0.0 :: Double)
-                    Just od -> 
-                        return $ toTermLiteral $ read @Double $ od ^. odPrice
+                    [] -> return $ toTermLiteral (0.0 :: Double)
+                    od:_ -> 
+                        return $ toTermLiteral $ read @Decimal $ od ^. odPrice
             
             isJustRef ref = do
                 mv <- readIORef ref
                 case mv of
-                    Nothing -> return $ toTermLiteral False
-                    Just v  -> return $ toTerm $ toJSON v
+                    [] -> return $ toTermLiteral False
+                    v -> return $ toTerm $ toJSON v
         -- putTextLn $ "reduce native var " <> n
         in if | n == "*price-buy-order" -> orderPrice refBuyOrder
               | n == "*price-sell-order" -> orderPrice refSellOrder
-              | n == "*buy-order"    -> isJustRef refBuyOrder
-              | n == "*sell-order"   -> isJustRef refSellOrder
+              | n == "*buy-orders"    -> isJustRef refBuyOrder
+              | n == "*sell-orders"   -> isJustRef refSellOrder
               | Just i <- toString n ^? prefixed "*price-buy" -> buyPrice $ read i
               | Just i <- toString n ^? prefixed "*price-sell" -> sellPrice $ read i
               | otherwise -> throwString $ "unknown native var: " <> toString n
@@ -110,31 +110,36 @@ initRepl = do
     cfgRef <- newIORef $ APIConfig "" ""
 
     let
+        lastServerTime :: Repl Integer
+        lastServerTime = do
+            depth <- readTVarIO tdepth
+            return $ depth ^. dts
+
         orders :: Text -> Repl Text
         orders sym = do
-            ts <- serverTime
+            ts <- lastServerTime
             cfg <- readIORef cfgRef
             orders <- liftIO $ FCoin.orderRequest cfg ts $ GetOrders (toString sym) ["submitted", "partial_filled"]
-            let sellorder = listToMaybe [order | order <- orders, _odSide order == "sell"]
-                buyorder  = listToMaybe [order | order <- orders, _odSide order == "buy"] 
+            let sellorder = [order | order <- orders, _odSide order == "sell"]
+                buyorder  = [order | order <- orders, _odSide order == "buy"] 
             writeIORef refSellOrder sellorder
             writeIORef refBuyOrder buyorder
-            putStrLn $ "sell order: " <> show sellorder
-            putStrLn $ "buy order: " <> show buyorder
+            -- putStrLn $ "sell order: " <> show sellorder
+            -- putStrLn $ "buy order: " <> show buyorder
 
             return $ toText $ show orders
 
         getOrder :: Text -> Repl Text
         getOrder oid = do
-            ts <- serverTime
+            ts <- lastServerTime
             cfg <- readIORef cfgRef
             order <- liftIO $ FCoin.orderRequest cfg ts $ GetOrder $ toString oid
             return $ toText $ show order
 
         getBalance :: FunApp -> [Term Name] -> Repl (Term Name)
         getBalance _ _ = do
-            putTextLn "get-balance"
-            ts <- serverTime
+            -- putTextLn "get-balance"
+            ts <- lastServerTime
             cfg <- readIORef cfgRef
             balances <- liftIO $ FCoin.orderRequest cfg ts GetBalance
             let cs = balances ^.. values . key "currency" . _String
@@ -160,7 +165,7 @@ initRepl = do
 
         newOrder :: _ -> Text -> Decimal -> Decimal -> Repl Text
         newOrder dir sym p a = do
-            ts <- serverTime
+            ts <- lastServerTime
             cfg <- readIORef cfgRef
             oid <- liftIO $ FCoin.orderRequest cfg ts $ dir (toString sym) (toDouble p) (toDouble a)
             putStrLn oid
@@ -171,7 +176,7 @@ initRepl = do
 
         cancelOrder :: Text -> Repl Text
         cancelOrder oid = do
-            ts <- serverTime
+            ts <- lastServerTime
             cfg <- readIORef cfgRef
             ret <- liftIO $ FCoin.orderRequest cfg ts $ CancelOrder $ toString oid
             putStrLn $ show ret
@@ -198,11 +203,12 @@ initRepl = do
 newRepl = new $ do
     initRepl
 
-runFile :: FilePath -> IO ()
-runFile path = do
+runFile :: FilePath -> String -> IO ()
+runFile path cmd = do
   env <- newReplEnv
 
   runRIO env $ do
     initRepl
-    r <- evalFile path
+    evalFile path
+    r <- evalString cmd
     putStrLn $ show r

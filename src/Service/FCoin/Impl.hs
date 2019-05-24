@@ -108,6 +108,6 @@ orderRequest APIConfig{..} ts = \case
     post s ps v = do
         let presig = "POST" <> s <> show ts <> ps
             postsig = sig presig
-        putStrLn $ presig <> " -> " 
-        putStrLn $ postsig
+        -- putStrLn $ presig <> " -> " 
+        -- putStrLn $ postsig
         return $ setRequestBodyJSON v . fcHeaders postsig . fromString $ "POST " <> s

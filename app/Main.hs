@@ -14,6 +14,6 @@ main :: IO ()
 main = do
   args <- getArgs
   case args of
-    [path]  -> runFile path
+    [path, cmd]  -> runFile path cmd
     []      -> repl
     _       -> putStrLn $ "unknown argumens: " <> show args
