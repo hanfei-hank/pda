@@ -3,7 +3,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Run (newRepl, runFile) where
+module Run (newRepl, runFiles) where
 
 import GHC.Conc (retry)
 import Prelude (read)
@@ -203,12 +203,12 @@ initRepl = do
 newRepl = new $ do
     initRepl
 
-runFile :: FilePath -> String -> IO ()
-runFile path cmd = do
+runFiles :: [FilePath] -> String -> IO ()
+runFiles paths cmd = do
   env <- newReplEnv
 
   runRIO env $ do
     initRepl
-    evalFile path
+    mapM_ evalFile paths
     r <- evalString cmd
     putStrLn $ show r
