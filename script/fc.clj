@@ -3,6 +3,7 @@
 (def api-key (atom ""))
 (def api-secret (atom ""))
 (def symbol (atom "eosusdt"))
+(def prec (atom 3))
 
 ;; 间隔时间，毫秒
 (def interval (atom 9000))
@@ -13,8 +14,12 @@
 (def min-sell-level 1.03)
 (def max-sell-level 1.16)
 
+(defn set-symbol [s]
+  (reset! symbol s)
+  (reset! prec (get {"eosusdt" 3, "eosbtc" 7} s)))
+
 (defn- init []
-  (set-api @api-key @api-secret)
+  (set-api @api-key @api-secret @symbol)
   (sleep 4000))
 
 (defn- cancel [order]
@@ -22,7 +27,7 @@
     (cancel-order (:id order)))
 
 (defn- compute-price [price factor]
-    (ceiling (* price factor) 3))
+    (ceiling (* price factor) @prec))
 
 (defn cancel-all []
   (get-orders @symbol)
@@ -75,6 +80,7 @@
     (cancel-all)
     (sleep 1000)
     (submit-all)
+    (sleep 1000)
     (while true 
         (sleep @interval)
         (get-orders @symbol)

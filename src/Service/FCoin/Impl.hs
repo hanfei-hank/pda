@@ -25,15 +25,15 @@ sign secret msg =
         let digest :: Digest SHA1 = hmacGetDigest $ hmac secret $ B64.encode msg
         in B64.encode $ ByteArray.convert digest
 
-app :: TVar Depth -> WS.ClientApp ()
-app tdepth conn = do
+app :: TVar Depth -> Text -> WS.ClientApp ()
+app tdepth symbol conn = do
     putTextLn "Connected!"
 
     -- Read from stdin and write to WS
 --     let loop = do
 --             threadDelay 30000000
 --              WS.sendTextData conn "xxx" >> loop
-    let subCmd :: Text = "{\"cmd\":\"sub\",\"args\":[\"depth.L20.eosusdt\"]}"
+    let subCmd :: Text = "{\"cmd\":\"sub\",\"args\":[\"depth.L20." <> symbol <> "\"]}"
     WS.sendTextData conn subCmd
 --     loop
     -- writes WS data to stdout
@@ -57,12 +57,10 @@ app tdepth conn = do
     
   
 --------------------------------------------------------------------------------
-start :: IO (TVar Depth)
-start = do
-  -- runSecureClient "echo.websocket.org" 443 "/" app
-  tdepth <- newTVarIO def
-  async $ runSecureClient "api.fcoin.com" 443 "/v2/ws" $ app tdepth
-  return tdepth
+start :: TVar Depth -> Text -> IO ()
+start tdepth symbol = do
+  async $ runSecureClient "api.fcoin.com" 443 "/v2/ws" $ app tdepth symbol
+  return ()
     
 
 serverTime :: IO Integer

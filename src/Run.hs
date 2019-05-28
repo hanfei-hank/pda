@@ -29,11 +29,6 @@ proxy host port proxyPort = do
     liftIO $ tcpProxy (encodeUtf8 host) (fromInteger port) (fromInteger proxyPort)
     return "proxy started!"
 
-fcoin :: Repl Text
-fcoin = do
-    liftIO $ FCoin.start
-    return "ok"
-
 serverTime :: Repl Integer
 serverTime = do
     liftIO $ FCoin.serverTime
@@ -53,7 +48,7 @@ sleep ms = do
 --       writeFileUtf8 (toString targetFile) $ substituteValue template value
 --       return "success!"
 
-makeNativeModule "user" ['proxy, 'fcoin, 'serverTime, 'sleep]
+makeNativeModule "user" ['proxy, 'serverTime, 'sleep]
 
 initRepl :: Repl ()
 initRepl = do
@@ -106,10 +101,17 @@ initRepl = do
               | Just i <- toString n ^? prefixed "*price-sell" -> sellPrice $ read i
               | otherwise -> throwString $ "unknown native var: " <> toString n
 
-    tdepth <- liftIO FCoin.start
+    tdepth <- newTVarIO def
+    -- tdepth <- liftIO FCoin.start
     cfgRef <- newIORef $ APIConfig "" ""
 
     let
+        setApi :: Text -> Text -> Text -> Repl Text
+        setApi key secret symbol = do
+            writeIORef cfgRef $ APIConfig (encodeUtf8 key) (encodeUtf8 secret)
+            liftIO $ FCoin.start tdepth symbol
+            return "ok"
+
         lastServerTime :: Repl Integer
         lastServerTime = do
             depth <- readTVarIO tdepth
@@ -147,11 +149,6 @@ initRepl = do
             -- putStrLn $ show mb
             return $ toTerm mb
 
-        setApi :: Text -> Text -> Repl Text
-        setApi key secret = do
-            writeIORef cfgRef $ APIConfig (encodeUtf8 key) (encodeUtf8 secret)
-            return "ok"
-
         getMarket :: Text -> Repl Text
         getMarket sym = do
             lastTs <- view dts <$> readIORef depthRef
@@ -185,7 +182,7 @@ initRepl = do
     loadNativeModule ("fcoin",
                        [ $(defRNativeQ "get-orders" [t| Text -> Text |] [| orders |])
                        , $(defRNativeQ "get-order" [t| Text -> Text |] [| getOrder |])
-                       , $(defRNativeQ "set-api" [t| Text -> Text -> Text |] [| setApi |])
+                       , $(defRNativeQ "set-api" [t| Text -> Text -> Text -> Text |] [| setApi |])
                        , $(defRNativeQ "get-market" [t| Text -> Text |] [| getMarket |])
                        , $(defRNativeQ "sell" [t| Text -> Decimal -> Decimal -> Text |] [| newOrder Sell |])
                        , $(defRNativeQ "buy" [t| Text -> Decimal -> Decimal -> Text |] [| newOrder Buy |])
