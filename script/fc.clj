@@ -8,7 +8,7 @@
 ;; 间隔时间，毫秒
 (def interval (atom 9000))
 
-(def sell-amount (atom 40.0))
+(def sell-amount (atom 1.0))
 
 (def sell-levels [1.035, 1.05, 1.065, 1.08, 1.095, 1.11, 1.125, 1.14, 1.155])
 (def min-sell-level 1.03)
@@ -16,7 +16,7 @@
 
 (defn set-symbol [s]
   (reset! symbol s)
-  (reset! prec (get {"eosusdt" 3, "eosbtc" 7} s)))
+  (reset! prec (get {"eosusdt" 3, "eoseth" 5, "eosbtc" 7} s)))
 
 (defn- init []
   (set-api @api-key @api-secret @symbol)
@@ -71,9 +71,12 @@
     ; (when debug (printf "handle sell orders {}" base-price))
     (let [sorted-orders (sort [:price] orders)
           price-min (compute-price base-price min-sell-level)
-          price-max (compute-price base-price max-sell-level)]
-        (reduce (check-min-sell-order base-price price-min) (- (count sell-levels) 1) sorted-orders)
-        (reduce (check-max-sell-order base-price price-max) 0 sorted-orders)))
+          price-max (compute-price base-price max-sell-level)
+          ret1 (reduce (check-min-sell-order base-price price-min) (- (count sell-levels) 1) sorted-orders)
+          ret2 (reduce (check-max-sell-order base-price price-max) 0 sorted-orders)]
+        (when (or (not= ret1 (- (count sell-levels) 1)) (not= ret2 0))
+          (printf "order changed, query again!")
+          (get-orders @symbol))))
 
 (defn gua-dan []
     (init)
@@ -81,9 +84,10 @@
     (sleep 1000)
     (submit-all)
     (sleep 1000)
+    (get-orders @symbol)
     (while true 
         (sleep @interval)
-        (get-orders @symbol)
+        ; (get-orders @symbol)
         (get-market @symbol)
         (handle-sell-orders *price-sell1 *sell-orders)))
 
