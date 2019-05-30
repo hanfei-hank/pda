@@ -102,7 +102,6 @@ initRepl = do
               | otherwise -> throwString $ "unknown native var: " <> toString n
 
     tdepth <- newTVarIO def
-    -- tdepth <- liftIO FCoin.start
     cfgRef <- newIORef $ APIConfig "" ""
 
     let

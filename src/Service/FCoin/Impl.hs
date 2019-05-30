@@ -38,7 +38,7 @@ app tdepth symbol conn = do
 --     loop
     -- writes WS data to stdout
     let go n ts
-            | n > 100 = do
+            | n > 30 = do
                 let pingCmd :: Text = "{\"cmd\":\"ping\",\"args\":[" <> toText (show ts) <> "],\"id\":\"1\"}"
                 WS.sendTextData conn pingCmd 
                 go 0 ts
@@ -59,7 +59,13 @@ app tdepth symbol conn = do
 --------------------------------------------------------------------------------
 start :: TVar Depth -> Text -> IO ()
 start tdepth symbol = do
-  async $ runSecureClient "api.fcoin.com" 443 "/v2/ws" $ app tdepth symbol
+  let go = do
+          putTextLn "starting web socket"
+          runSecureClient "api.fcoin.com" 443 "/v2/ws" (app tdepth symbol)
+          `catchAny` \e -> do
+            putTextLn $ "webservice stopped!" <> toText (show e)
+            threadDelay 1000000
+  async $ forever go
   return ()
     
 
