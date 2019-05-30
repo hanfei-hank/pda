@@ -14,7 +14,9 @@
 (def min-sell-level 1.025)
 (def max-sell-level 1.16)
 
-(defn- init []
+(def eoseth "eoseth")
+
+(defn init []
   (reset! prec (get {"eosusdt" 3, "eoseth" 5, "eosbtc" 7} @symbol))
   (printf "symbom = {}, prec = {}, sell-amount = {}, interval = {}" 
      @symbol @prec @sell-amount @interval)
@@ -29,7 +31,6 @@
     (ceiling (* price factor) @prec))
 
 (defn cancel-all []
-  (get-orders @symbol)
   (when *sell-orders
       (printf "cancel {} sell orders" (count *sell-orders))
       (map (cancel) *sell-orders)))
@@ -80,6 +81,7 @@
 
 (defn gua-dan []
     (init)
+    (get-orders @symbol)
     (cancel-all)
     (sleep 1000)
     (submit-all)
