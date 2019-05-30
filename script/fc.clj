@@ -8,19 +8,18 @@
 ;; 间隔时间，毫秒
 (def interval (atom 9000))
 
-(def sell-amount (atom 1.0))
+(def sell-amount (atom 1.0))    ;; 每笔卖单的数量
 
-(def sell-levels [1.035, 1.05, 1.065, 1.08, 1.095, 1.11, 1.125, 1.14, 1.155])
-(def min-sell-level 1.03)
+(def sell-levels [1.028, 1.035, 1.05, 1.065, 1.08, 1.095, 1.11, 1.125, 1.14, 1.155])
+(def min-sell-level 1.025)
 (def max-sell-level 1.16)
 
-(defn set-symbol [s]
-  (reset! symbol s)
-  (reset! prec (get {"eosusdt" 3, "eoseth" 5, "eosbtc" 7} s)))
-
 (defn- init []
+  (reset! prec (get {"eosusdt" 3, "eoseth" 5, "eosbtc" 7} @symbol))
+  (printf "symbom = {}, prec = {}, sell-amount = {}, interval = {}" 
+     @symbol @prec @sell-amount @interval)
   (set-api @api-key @api-secret @symbol)
-  (sleep 4000))
+  (sleep 8000))
 
 (defn- cancel [order]
     (printf "cancel order : {} " order)
@@ -47,6 +46,7 @@
 
 (defn- cancel-submit [order sell-price]
     (cancel order)
+    (sleep 500)   ;; 有时候取消订单没有及时完成，造成下面的挂单失败，所以暂停一会
     (sell @symbol sell-price @sell-amount)
     (printf "recreat order {} -> {}" (:price order) sell-price))
 
@@ -83,11 +83,10 @@
     (cancel-all)
     (sleep 1000)
     (submit-all)
-    (sleep 1000)
+    (sleep 5000)
     (get-orders @symbol)
     (while true 
         (sleep @interval)
-        ; (get-orders @symbol)
         (get-market @symbol)
         (handle-sell-orders *price-sell1 *sell-orders)))
 
