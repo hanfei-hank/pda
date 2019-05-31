@@ -72,21 +72,28 @@ start tdepth symbol = do
 serverTime :: IO Integer
 serverTime = do
     let request = "GET https://api.fcoin.com/v2/public/server-time"
-    response :: Integer <- rpData . getResponseBody <$> httpJSON request
+    Just (response :: Integer) <- rpData . getResponseBody <$> httpJSON request
     return response
 
 buy, sell, limit :: Text
 buy = "buy";    sell = "sell";  limit = "limit"
 
-orderRequest :: FromJSON a => APIConfig -> Integer -> OrderRequest a -> IO a
-orderRequest APIConfig{..} ts = \case
+orderRequest' :: (MonadIO m, FromJSON a) => APIConfig -> Integer -> OrderRequest a -> m a
+orderRequest' cfg ts req = do
+    eret <- orderRequest cfg ts req
+    case eret of
+        Left err -> throwString $ toString err
+        Right ret -> return ret
+
+orderRequest :: (MonadIO m, FromJSON a) => APIConfig -> Integer -> OrderRequest a -> m (Either Text a)
+orderRequest APIConfig{..} ts req = liftIO $ case req of
     GetOrders sym sts -> do
         call $ get $ "https://api.fcoin.com/v2/orders?limit=20&states=" <> mconcat (intersperse "," sts) <> "&symbol=" <> sym
     GetOrder odID -> do
         call $ get $ "https://api.fcoin.com/v2/orders/" <> odID
     CancelOrder odID -> do
         httpNoBody =<< post ("https://api.fcoin.com/v2/orders/" <> odID <> "/submit-cancel") "" (object [])
-        return ()
+        return $ Right ()
     GetBalance -> do
         call $ get $ "https://api.fcoin.com/v2/accounts/balance"
     Sell s p a -> 
@@ -99,7 +106,12 @@ orderRequest APIConfig{..} ts = \case
                 (object ["amount" .= show a, "price" .= show p, "side" .= buy, "symbol" .= s, "type" .= limit])
 
   where
-    call req = rpData . getResponseBody <$> httpJSON req
+    call req = do
+        body <- getResponseBody <$> httpJSON req
+        case (rpData body, rpMsg body) of
+            (Just ret, _) -> return $ Right ret
+            (Nothing, Just err) -> return $ Left err
+            
     sig = sign apiSecret . fromString
     fcHeaders sig = 
                 addRequestHeader "FC-ACCESS-KEY" apiKey

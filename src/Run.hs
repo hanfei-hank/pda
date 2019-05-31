@@ -120,9 +120,9 @@ initRepl = do
         orders sym = do
             ts <- lastServerTime
             cfg <- readIORef cfgRef
-            orders <- liftIO $ FCoin.orderRequest cfg ts $ GetOrders (toString sym) ["submitted", "partial_filled"]
-            let sellorder = [order | order <- orders, _odSide order == "sell"]
-                buyorder  = [order | order <- orders, _odSide order == "buy"] 
+            orders <- FCoin.orderRequest' cfg ts $ GetOrders (toString sym) ["submitted", "partial_filled"]
+            let sellorder = [order | order <- orders, _odSide order == "sell", _odSource order /= "web"]
+                buyorder  = [order | order <- orders, _odSide order == "buy", _odSource order /= "web"] 
             writeIORef refSellOrder sellorder
             writeIORef refBuyOrder buyorder
             -- putStrLn $ "sell order: " <> show sellorder
@@ -134,7 +134,7 @@ initRepl = do
         getOrder oid = do
             ts <- lastServerTime
             cfg <- readIORef cfgRef
-            order <- liftIO $ FCoin.orderRequest cfg ts $ GetOrder $ toString oid
+            order <- FCoin.orderRequest' cfg ts $ GetOrder $ toString oid
             return $ toText $ show order
 
         getBalance :: FunApp -> [Term Name] -> Repl (Term Name)
@@ -142,7 +142,7 @@ initRepl = do
             -- putTextLn "get-balance"
             ts <- lastServerTime
             cfg <- readIORef cfgRef
-            balances <- liftIO $ FCoin.orderRequest cfg ts GetBalance
+            balances <- FCoin.orderRequest' cfg ts GetBalance
             let cs = balances ^.. values . key "currency" . _String
                 mb =  Object $ HM.fromList (zip cs $ balances ^.. values)
             -- putStrLn $ show mb
@@ -163,9 +163,9 @@ initRepl = do
         newOrder dir sym p a = do
             ts <- lastServerTime
             cfg <- readIORef cfgRef
-            oid <- liftIO $ FCoin.orderRequest cfg ts $ dir (toString sym) (toDouble p) (toDouble a)
-            putStrLn oid
-            return $ toText oid
+            oid <- FCoin.orderRequest cfg ts $ dir (toString sym) (toDouble p) (toDouble a)
+            putStrLn $ show oid
+            return $ "ok"
           where
             toDouble :: Decimal -> Double
             toDouble = fromRational . toRational
@@ -174,7 +174,7 @@ initRepl = do
         cancelOrder oid = do
             ts <- lastServerTime
             cfg <- readIORef cfgRef
-            ret <- liftIO $ FCoin.orderRequest cfg ts $ CancelOrder $ toString oid
+            ret <- FCoin.orderRequest' cfg ts $ CancelOrder $ toString oid
             putStrLn $ show ret
             return $ toText $ show ret
 

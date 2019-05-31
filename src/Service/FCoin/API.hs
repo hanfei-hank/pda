@@ -62,7 +62,8 @@ instance ToJSON Order where
 
 data Response a = Response {
     rpStatus  :: Int
-  , rpData    :: a
+  , rpData    :: Maybe a
+  , rpMsg     :: Maybe Text
 } deriving (Show, Generic)
 
 instance FromJSON a => FromJSON (Response a) where
