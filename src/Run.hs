@@ -74,7 +74,7 @@ initRepl = do
         let 
             depthPrice da i = do
                 depth <- readIORef depthRef
-                let Just p = depth ^? da . ix (i - 1) . price
+                let Just (Price p) = depth ^? da . ix (i - 1) . price
                 return $ toTermLiteral p
 
             buyPrice = depthPrice dBids
@@ -163,7 +163,7 @@ initRepl = do
         newOrder dir sym p a = do
             ts <- lastServerTime
             cfg <- readIORef cfgRef
-            oid <- FCoin.orderRequest cfg ts $ dir (toString sym) (toDouble p) (toDouble a)
+            oid <- FCoin.orderRequest cfg ts $ dir (toString sym) (Price $ toDouble p) (Amount $ toDouble a)
             putStrLn $ show oid
             return $ "ok"
           where

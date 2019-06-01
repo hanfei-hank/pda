@@ -23,6 +23,7 @@ dependencies:
 - base >= 4.11 && < 10
 - base64-bytestring
 - casing
+- containers
 - cryptonite
 - Decimal
 - hclj

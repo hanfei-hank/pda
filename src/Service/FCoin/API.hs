@@ -6,9 +6,15 @@ import Seal.Prelude
 import Data.Aeson
 import Text.Casing
 
+newtype Price = Price Double
+    deriving (FromJSON, Show)
+
+newtype Amount = Amount Double
+    deriving (FromJSON, Show)
+
 data Item = Item {
-    _price :: Double
-  , _amount :: Double
+    _price :: Price
+  , _amount :: Amount
 } deriving (Show)
 
 data Depth = Depth {
@@ -28,7 +34,7 @@ instance FromJSON Depth where
         <*> v .: "ts"
       where
         toItem [] = []
-        toItem (p:a:rest) = Item p a : toItem rest
+        toItem (p:a:rest) = Item (Price p) (Amount a) : toItem rest
 
 data Order = Order {
   _odId	:: OrderID	-- 订单 ID
@@ -71,8 +77,8 @@ instance FromJSON a => FromJSON (Response a) where
 
 type OrderID = String
 type Symbol = String
-type Price = Double
-type Amount = Double
+-- type Price = Double
+-- type Amount = Double
 
 data OrderRequest a where
   Buy :: Symbol -> Price -> Amount -> OrderRequest OrderID
