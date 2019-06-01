@@ -12,9 +12,9 @@
 (def eosusdt "eosusdt")
 
 (def sell-amount (atom 1.0))    ;; 每笔卖单的数量
-(def sell-levels [1.023, 1.028, 1.033, 1.038, 1.05, 1.065, 1.08, 1.095, 1.11, 1.125])
-(def min-sell-level 1.02)
-(def max-sell-level 1.13)
+(def sell-levels [1.018, 1.023, 1.028, 1.033, 1.038, 1.05, 1.065, 1.08, 1.095, 1.11])
+(def min-sell-level 1.015)
+(def max-sell-level 1.115)
 
 (def buy-amount (atom 1.0))    ;; 每笔买单的数量
 (def buy-levels [0.97, 0.955, 0.94, 0.925, 0.91, 0.895, 0.88, 0.865, 0.85])
