@@ -8,6 +8,7 @@
 ;; 间隔时间，毫秒
 (def interval (atom 9000))
 
+(def bsvusdt "bsvusdt")
 (def eoseth "eoseth")
 (def eosusdt "eosusdt")
 
@@ -22,7 +23,7 @@
 (def max-buy-level 0.975)
 
 (defn init []
-  (reset! prec (get {"eosusdt" 3, "eoseth" 5, "eosbtc" 7} @symbol))
+  (reset! prec (get {"bsvusdt" 2, "eosusdt" 3, "eoseth" 5, "eosbtc" 7} @symbol))
   (printf "symbom = {}, prec = {}, sell-amount = {}, buy-amount = {}, interval = {}" 
      @symbol @prec @sell-amount @buy-amount @interval)
   (set-api @api-key @api-secret @symbol)
@@ -154,3 +155,40 @@
         (get-market @symbol)
         (handle-buy-orders *price-buy1 *buy-orders)))
       
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;; pai xu ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn- order-price [order]
+  (str-to-decimal (:price order)))
+
+;; delete too low and too high orders
+(defn- cancel-orders [price-min price-max orders]      
+  (let [low-orders (filter (comp (> price-min) (order-price)) orders)
+        high-orders  (filter (comp (< price-max) (order-price)) orders)
+        delete-orders (+ low-orders high-orders)]
+      (map (cancel) delete-orders)
+      (if (= 0 (count delete-orders))
+        false
+        true)))
+
+;; get orders and submit if need
+(defn- submit-px-buy-orders [order-number amount]
+  (if *buy-orders
+    (if (> order-number (count *buy-orders))
+        (do (buy @symbol *price-buy9 amount)
+            (buy @symbol *price-buy11 amount)
+            true)
+        false)
+    (do (buy @symbol *price-buy8 amount)
+        (buy @symbol *price-buy10 amount)
+        (buy @symbol *price-buy12 amount)
+        true)))
+
+(defn handle-px-buy [price-min price-max order-number amount]
+    (if *buy-orders
+      (if (cancel-orders price-min price-max *buy-orders)
+        true
+        (submit-px-buy-orders order-number amount))
+      
+      ;; 没有order时每次提交一个新order
+      (submit-px-buy-orders order-number amount)))
+
