@@ -192,3 +192,26 @@
       ;; 没有order时每次提交一个新order
       (submit-px-buy-orders order-number amount)))
 
+
+;; get orders and submit if need
+(defn- submit-px-sell-orders [order-number amount]
+  (if *sell-orders
+    (if (> order-number (count *sell-orders))
+        (do (sell @symbol *price-sell9 amount)
+            (sell @symbol *price-sell11 amount)
+            true)
+        false)
+    (do (sell @symbol *price-sell8 amount)
+        (sell @symbol *price-sell10 amount)
+        (sell @symbol *price-sell12 amount)
+        true)))
+
+(defn handle-px-sell [price-min price-max order-number amount]
+    (if *sell-orders
+      (if (cancel-orders price-min price-max *sell-orders)
+        true
+        (submit-px-sell-orders order-number amount))
+      
+      ;; 没有order时每次提交一个新order
+      (submit-px-sell-orders order-number amount)))
+
