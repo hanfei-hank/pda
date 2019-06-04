@@ -5,6 +5,8 @@
 (def symbol (atom "eosusdt"))
 (def prec (atom 3))
 
+(def tick (atom 0))
+
 ;; 间隔时间，毫秒
 (def interval (atom 9000))
 
@@ -160,9 +162,16 @@
 (defn- order-price [order]
   (str-to-decimal (:price order)))
 
+(defn- order-amount [order]
+  (str-to-decimal (:amount order)))
+
+(defn- valid-orders [orders]
+  (filter (comp (< 0.009) (order-amount)) orders))
+
 ;; delete too low and too high orders
 (defn- cancel-orders [price-min price-max orders]      
-  (let [low-orders (filter (comp (> price-min) (order-price)) orders)
+  (let [filtered-orders (filter (comp (< 0.002) (order-amount)) orders)
+        low-orders (filter (comp (> price-min) (order-price)) filtered-orders)
         high-orders  (filter (comp (< price-max) (order-price)) orders)
         delete-orders (+ low-orders high-orders)]
       (map (cancel) delete-orders)
@@ -173,13 +182,15 @@
 ;; get orders and submit if need
 (defn- submit-px-buy-orders [order-number amount]
   (if *buy-orders
-    (if (> order-number (count *buy-orders))
-        (do (buy @symbol *price-buy9 amount)
+    (if (> order-number (count (valid-orders *buy-orders)))
+        (do  
+            ; (buy @symbol *price-buy9 amount)
             (buy @symbol *price-buy11 amount)
             true)
         false)
-    (do (buy @symbol *price-buy8 amount)
-        (buy @symbol *price-buy10 amount)
+    (do
+        ; (buy @symbol *price-buy8 amount)
+        ; (buy @symbol *price-buy10 amount)
         (buy @symbol *price-buy12 amount)
         true)))
 
@@ -196,14 +207,16 @@
 ;; get orders and submit if need
 (defn- submit-px-sell-orders [order-number amount]
   (if *sell-orders
-    (if (> order-number (count *sell-orders))
-        (do (sell @symbol *price-sell9 amount)
-            (sell @symbol *price-sell11 amount)
+    (if (> order-number (count (valid-orders *sell-orders)))
+        (do 
+            ; (sell @symbol *price-sell11 amount)
+            (sell @symbol *price-sell13 amount)
             true)
         false)
-    (do (sell @symbol *price-sell8 amount)
-        (sell @symbol *price-sell10 amount)
-        (sell @symbol *price-sell12 amount)
+    (do 
+        ; (sell @symbol *price-sell10 amount)
+        ; (sell @symbol *price-sell12 amount)
+        (sell @symbol *price-sell14 amount)
         true)))
 
 (defn handle-px-sell [price-min price-max order-number amount]
@@ -215,3 +228,9 @@
       ;; 没有order时每次提交一个新order
       (submit-px-sell-orders order-number amount)))
 
+(defn handle-px-1 [amount]
+  (reset! tick (+ 1 @tick))
+  (when (= 5 (mod @tick 10))
+    (buy @symbol *price-buy2 amount))
+  (when (= 6 (mod @tick 10))
+    (sell @symbol *price-sell2 amount)))
