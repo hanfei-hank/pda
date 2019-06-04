@@ -13,6 +13,7 @@
 (def bsvusdt "bsvusdt")
 (def eoseth "eoseth")
 (def eosusdt "eosusdt")
+(def zecusdt "zecusdt")
 
 (def sell-amount (atom 1.0))    ;; 每笔卖单的数量
 (def sell-levels [1.018, 1.023, 1.028, 1.033, 1.038, 1.05, 1.065, 1.08, 1.095, 1.11])
@@ -25,7 +26,7 @@
 (def max-buy-level 0.975)
 
 (defn init []
-  (reset! prec (get {"bsvusdt" 2, "eosusdt" 3, "eoseth" 5, "eosbtc" 7} @symbol))
+  (reset! prec (get {"bsvusdt" 2, "eosusdt" 3, "eoseth" 5, "eosbtc" 7, "zecusdt" 2} @symbol))
   (printf "symbom = {}, prec = {}, sell-amount = {}, buy-amount = {}, interval = {}" 
      @symbol @prec @sell-amount @buy-amount @interval)
   (set-api @api-key @api-secret @symbol)
