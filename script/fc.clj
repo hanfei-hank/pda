@@ -67,20 +67,16 @@
       level-index))
 
 ; order process
-(defn handle-sell-orders [base-price orders]
+(defn handle-gd-sell [base-price]
     ; (when debug (printf "handle sell orders {}" base-price))
-    (let [sorted-orders (sort [:price] orders)
+    (let [sorted-orders (sort [:price] *sell-orders)
           price-min (compute-price base-price min-sell-level)
           price-max (compute-price base-price max-sell-level)
           ret1 (reduce (check-min-sell-order base-price price-min) (- (count sell-levels) 1) sorted-orders)
           ret2 (reduce (check-max-sell-order base-price price-max) 0 sorted-orders)]
-        (when (or (not= ret1 (- (count sell-levels) 1)) (not= ret2 0))
-          (printf "order changed, query again!")
-          (get-orders @symbol))))
+        (or (not= ret1 (- (count sell-levels) 1)) (not= ret2 0))))
 
-(defn sell-gua-dan []
-    (init)
-
+(defn reset-gd-sell []
     (get-orders @symbol)
     (when *sell-orders
       (printf "cancel {} sell orders" (count *sell-orders))
@@ -91,12 +87,7 @@
     (map (submit-sell @sell-amount) sell-levels)
     (printf "submit all sell order ok")
 
-    (sleep 5000)
-    (get-orders @symbol)
-    (while true 
-        (sleep @interval)
-        (get-market @symbol)
-        (handle-sell-orders *price-sell1 *sell-orders)))
+    (sleep 5000))
 
 ;; buy functions
 (defn submit-buy [amount factor]
@@ -229,9 +220,11 @@
       ;; 没有order时每次提交一个新order
       (submit-px-sell-orders order-number amount)))
 
-(defn handle-px-1 [amount]
+;; sell 1  buy 1
+(defn handle-px-1 [amount cycle]
   (reset! tick (+ 1 @tick))
-  (when (= 5 (mod @tick 10))
-    (buy @symbol *price-buy2 amount))
-  (when (= 6 (mod @tick 10))
-    (sell @symbol *price-sell2 amount)))
+  (let [n (mod @tick cycle)]
+    (when (= 0 n)
+      (buy @symbol *price-buy1 amount))
+    (when (= (/ cycle 2) n)
+      (sell @symbol *price-sell1 amount))))
