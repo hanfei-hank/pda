@@ -11,6 +11,7 @@
 (def interval (atom 9000))
 
 (def bsvusdt "bsvusdt")
+(def dashusdt "dashusdt")
 (def eoseth "eoseth")
 (def eosusdt "eosusdt")
 (def zecusdt "zecusdt")
@@ -26,7 +27,7 @@
 (def max-buy-level 0.975)
 
 (defn init []
-  (reset! prec (get {"bsvusdt" 2, "eosusdt" 3, "eoseth" 5, "eosbtc" 7, "zecusdt" 2} @symbol))
+  (reset! prec (get {"bsvusdt" 2, "dashusdt" 1, "eosusdt" 3, "eoseth" 5, "eosbtc" 7, "zecusdt" 2} @symbol))
   (printf "symbom = {}, prec = {}, sell-amount = {}, buy-amount = {}, interval = {}" 
      @symbol @prec @sell-amount @buy-amount @interval)
   (set-api @api-key @api-secret @symbol)
