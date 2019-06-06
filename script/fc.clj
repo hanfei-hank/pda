@@ -161,16 +161,15 @@
 (defn- valid-orders [orders]
   (filter (comp (< 0.009) (order-amount)) orders))
 
-;; delete too low and too high orders
-(defn- cancel-orders [price-min price-max orders]      
-  (let [filtered-orders (filter (comp (< 0.002) (order-amount)) orders)
-        low-orders (filter (comp (> price-min) (order-price)) filtered-orders)
-        high-orders  (filter (comp (< price-max) (order-price)) orders)
-        delete-orders (+ low-orders high-orders)]
-      (map (cancel) delete-orders)
-      (if (= 0 (count delete-orders))
-        false
-        true)))
+(defn- cancel-low-orders [price-min orders]
+  (let [low-orders (filter (comp (> price-min) (order-price)) orders)]
+    (map (cancel) low-orders)
+    (not= 0 (count low-orders))))
+
+(defn- cancel-high-orders [price-max orders]
+  (let [high-orders  (filter (comp (< price-max) (order-price)) orders)]
+    (map (cancel) high-orders)
+    (not= 0 (count high-orders))))
 
 ;; get orders and submit if need
 (defn- submit-px-buy-orders [order-number amount]
@@ -187,9 +186,9 @@
         (buy @symbol *price-buy12 amount)
         true)))
 
-(defn handle-px-buy [price-min price-max order-number amount]
+(defn handle-px-buy [price-min order-number amount]
     (if *buy-orders
-      (if (cancel-orders price-min price-max *buy-orders)
+      (if (cancel-low-orders price-min *buy-orders)
         true
         (submit-px-buy-orders order-number amount))
       
@@ -212,9 +211,9 @@
         (sell @symbol *price-sell14 amount)
         true)))
 
-(defn handle-px-sell [price-min price-max order-number amount]
+(defn handle-px-sell [price-max order-number amount]
     (if *sell-orders
-      (if (cancel-orders price-min price-max *sell-orders)
+      (if (cancel-high-orders price-max *sell-orders)
         true
         (submit-px-sell-orders order-number amount))
       
@@ -229,3 +228,18 @@
       (buy @symbol *price-buy1 amount))
     (when (= (/ cycle 2) n)
       (sell @symbol *price-sell1 amount))))
+
+;; one only
+(defn handle-px-1-only [amount cycle]
+  (reset! tick (+ 1 @tick))
+  (let [n (mod @tick cycle)]
+    (when (= 0 n)
+      (buy @symbol *price-buy1 amount))
+    (when (= (/ cycle 2) n)
+      (sell @symbol *price-sell1 amount))
+    (when (= 2 (mod @tick (* 5 cycle)))
+      (get-orders @symbol)
+      (when *sell-orders
+        (cancel-high-orders *price-sell15 *sell-orders))
+      (when *buy-orders
+        (cancel-low-orders *price-buy15 *buy-orders)))))
