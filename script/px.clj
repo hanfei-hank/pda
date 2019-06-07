@@ -69,28 +69,28 @@
 
 (defn- buy-2-5 [diff amount]
   (let [real-amount (reduce (acc-buy-amount) 0.0 [2 3 4 5])
-        value (/ (/ real-amount amount) 2.2)]
+        value (/ (/ real-amount amount) 4)]
       (when (< value diff)
         ; (printf "buy-2-5 price = {}, amount = {} {}, diff = {}" *price-buy3 real-amount amount value)
         (buy @symbol *price-buy3 amount))))
 
 (defn- sell-2-5 [diff amount]
   (let [real-amount (reduce (acc-sell-amount) 0.0 [2 3 4 5])
-        value (/ (/ real-amount amount) 2.2)]
+        value (/ (/ real-amount amount) 4)]
       (when (< value diff)
         ; (printf "sell-2-5 price = {}, amount = {} {}, diff = {}" *price-sell3 real-amount amount value)
         (sell @symbol *price-sell3 amount))))
 
 (defn- buy-6-15 [diff amount]
   (let [real-amount (reduce (acc-buy-amount) 0.0 [6 7 8 9 10 11 12 13 14 15])
-        value (/ (/ real-amount amount) 3)]
+        value (/ (/ real-amount amount) 20)]
       (when (< value diff)
         ; (printf "buy-6-15 price = {}, amount = {} {}, diff = {}" *price-buy10 real-amount amount value)
         (buy @symbol *price-buy10 amount))))
 
 (defn- sell-6-15 [diff amount]
   (let [real-amount (reduce (acc-sell-amount) 0.0 [6 7 8 9 10 11 12 13 14 15])
-        value (/ (/ real-amount amount) 3)]
+        value (/ (/ real-amount amount) 20)]
       (when (< value diff)
         ; (printf "sell-6-15 price = {}, amount = {} {}, diff = {}" *price-sell10 real-amount amount value)
         (sell @symbol *price-sell10 amount))))
