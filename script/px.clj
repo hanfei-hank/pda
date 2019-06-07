@@ -34,9 +34,6 @@
 (defn- order-amount [order]
   (str-to-decimal (:amount order)))
 
-(defn- valid-orders [orders]
-  (filter (comp (< 0.009) (order-amount)) orders))
-
 (defn- cancel-low-orders [price-min orders]
   (let [low-orders (filter (comp (> price-min) (order-price)) orders)]
     (map (cancel) low-orders)
@@ -49,14 +46,14 @@
 
 (defn- buy-1 [diff amount]
   (let [real-amount (buy-amount 1)
-        value (/ real-amount amount)]
+        value (/ (/ real-amount amount) 0.1)]
     (when (< value diff)
       ; (printf "buy-1 price = {}, amount = {} {}, diff = {}" *price-buy1, real-amount amount value)
       (buy @symbol *price-buy1 amount))))
 
 (defn- sell-1 [diff amount]
   (let [real-amount (sell-amount 1)
-        value (/ real-amount amount)]
+        value (/ (/ real-amount amount) 0.1)]
     (when (< value diff)
       ; (printf "sell-1 price = {}, amount = {} {}, diff = {}" *price-sell1 real-amount amount value)
       (sell @symbol *price-sell1 amount))))
@@ -69,31 +66,35 @@
 
 (defn- buy-2-5 [diff amount]
   (let [real-amount (reduce (acc-buy-amount) 0.0 [2 3 4 5])
-        value (/ (/ real-amount amount) 4)]
+        value (/ (/ real-amount amount) 4)
+        price (if (= 0 (mod @tick 2)) *price-buy4 *price-buy5)]
       (when (< value diff)
         ; (printf "buy-2-5 price = {}, amount = {} {}, diff = {}" *price-buy3 real-amount amount value)
-        (buy @symbol *price-buy3 amount))))
+        (buy @symbol price amount))))
 
 (defn- sell-2-5 [diff amount]
   (let [real-amount (reduce (acc-sell-amount) 0.0 [2 3 4 5])
-        value (/ (/ real-amount amount) 4)]
+        value (/ (/ real-amount amount) 4)
+        price (if (= 0 (mod @tick 2)) *price-sell4 *price-sell5)]
       (when (< value diff)
         ; (printf "sell-2-5 price = {}, amount = {} {}, diff = {}" *price-sell3 real-amount amount value)
-        (sell @symbol *price-sell3 amount))))
+        (sell @symbol price amount))))
 
 (defn- buy-6-15 [diff amount]
   (let [real-amount (reduce (acc-buy-amount) 0.0 [6 7 8 9 10 11 12 13 14 15])
-        value (/ (/ real-amount amount) 20)]
+        value (/ (/ real-amount amount) 40)
+        price (if (= 0 (mod @tick 2)) *price-buy10 *price-buy12)]
       (when (< value diff)
         ; (printf "buy-6-15 price = {}, amount = {} {}, diff = {}" *price-buy10 real-amount amount value)
-        (buy @symbol *price-buy10 amount))))
+        (buy @symbol price amount))))
 
 (defn- sell-6-15 [diff amount]
   (let [real-amount (reduce (acc-sell-amount) 0.0 [6 7 8 9 10 11 12 13 14 15])
-        value (/ (/ real-amount amount) 20)]
+        value (/ (/ real-amount amount) 40)
+        price (if (= 0 (mod @tick 2)) *price-sell11 *price-sell12)]
       (when (< value diff)
         ; (printf "sell-6-15 price = {}, amount = {} {}, diff = {}" *price-sell10 real-amount amount value)
-        (sell @symbol *price-sell10 amount))))
+        (sell @symbol price amount))))
 
 ;; sell 1  buy 1
 (defn handle-px-1 [diff amount cycle]
@@ -110,6 +111,6 @@
     (when (= 5 (mod @tick (* 5 cycle)))
       (get-orders @symbol)
       (when *sell-orders
-        (cancel-high-orders *price-sell18 *sell-orders))
+        (cancel-high-orders *price-sell19 *sell-orders))
       (when *buy-orders
-        (cancel-low-orders *price-buy18 *buy-orders)))))
+        (cancel-low-orders *price-buy19 *buy-orders)))))
