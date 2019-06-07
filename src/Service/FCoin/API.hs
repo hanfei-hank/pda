@@ -12,6 +12,47 @@ newtype Price = Price Double
 newtype Amount = Amount Double
     deriving (FromJSON, Show)
 
+data Token 
+  = ADA
+  | BTC
+  | ETH
+  | EOS
+  | USDT
+  | BSV
+
+instance Show Token where
+    show ADA = "ada"
+    show BTC = "btc"
+    show ETH = "eth"
+    show EOS = "eos"
+    show USDT = "usdt"
+    show BSV = "bsv"
+
+data Symbol = Symbol !Token !Token
+
+instance Show Symbol where
+    show (Symbol t1 t2) = show t1 <> show t2
+
+mkSymbol :: String -> Symbol
+mkSymbol = \case
+    "eosbtc"  -> eosbtc
+    "eoseth"  -> eoseth
+    "eosusdt" -> eosusdt
+    "bsvusdt" -> bsvusdt
+    s         -> error $ toText $ "unknown symbol: " <> s
+
+eosbtc, eoseth, eosusdt, bsvusdt :: Symbol
+eosbtc = Symbol EOS BTC;  eoseth = Symbol EOS ETH;  eosusdt = Symbol EOS USDT;  bsvusdt = Symbol BSV USDT
+
+-- 价格精度
+pricePrec :: Symbol -> Int
+pricePrec = \case
+    Symbol EOS BTC  -> 7
+    Symbol EOS ETH  -> 5
+    Symbol EOS USDT -> 3
+    Symbol EOS BTC  -> 7
+    symbol          -> error $ toText $ "unknown symbol prec:" <> show symbol
+
 data Item = Item {
     _price :: Price
   , _amount :: Amount
@@ -76,7 +117,7 @@ instance FromJSON a => FromJSON (Response a) where
   parseJSON = genericParseJSON customOptions
 
 type OrderID = String
-type Symbol = String
+-- type Symbol = String
 -- type Price = Double
 -- type Amount = Double
 

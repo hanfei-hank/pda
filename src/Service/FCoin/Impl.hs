@@ -88,7 +88,7 @@ orderRequest' cfg ts req = do
 orderRequest :: (MonadIO m, FromJSON a) => APIConfig -> Integer -> OrderRequest a -> m (Either Text a)
 orderRequest APIConfig{..} ts req = liftIO $ case req of
     GetOrders sym sts -> do
-        call $ get $ "https://api.fcoin.com/v2/orders?limit=20&states=" <> mconcat (intersperse "," sts) <> "&symbol=" <> sym
+        call $ get $ "https://api.fcoin.com/v2/orders?limit=20&states=" <> mconcat (intersperse "," sts) <> "&symbol=" <> show sym
     GetOrder odID -> do
         call $ get $ "https://api.fcoin.com/v2/orders/" <> odID
     CancelOrder odID -> do
@@ -96,14 +96,14 @@ orderRequest APIConfig{..} ts req = liftIO $ case req of
         return $ Right ()
     GetBalance -> do
         call $ get $ "https://api.fcoin.com/v2/accounts/balance"
-    Sell s p a -> 
+    Sell s (Price p) (Amount a) -> 
         call =<< post "https://api.fcoin.com/v2/orders" 
-                ("amount=" <> show a <> "&price=" <> show p <> "&side=sell&symbol=" <> s <> "&type=limit")
-                (object ["amount" .= show a, "price" .= show p, "side" .= sell, "symbol" .= s, "type" .= limit])
-    Buy s p a -> 
+                ("amount=" <> show a <> "&price=" <> show p <> "&side=sell&symbol=" <> show s <> "&type=limit")
+                (object ["amount" .= show a, "price" .= show p, "side" .= sell, "symbol" .= show s, "type" .= limit])
+    Buy s (Price p) (Amount a) -> 
         call =<< post "https://api.fcoin.com/v2/orders" 
-                ("amount=" <> show a <> "&price=" <> show p <> "&side=buy&symbol=" <> s <> "&type=limit")
-                (object ["amount" .= show a, "price" .= show p, "side" .= buy, "symbol" .= s, "type" .= limit])
+                ("amount=" <> show a <> "&price=" <> show p <> "&side=buy&symbol=" <> show s <> "&type=limit")
+                (object ["amount" .= show a, "price" .= show p, "side" .= buy, "symbol" .= show s, "type" .= limit])
 
   where
     call req = do

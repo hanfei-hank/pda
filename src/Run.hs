@@ -86,7 +86,7 @@ initRepl = do
                     [] -> return $ toTermLiteral (0.0 :: Double)
                     od:_ -> 
                         return $ toTermLiteral $ read @Decimal $ od ^. odPrice
-            
+
             isJustRef ref = do
                 mv <- readIORef ref
                 case mv of
@@ -120,7 +120,7 @@ initRepl = do
         orders sym = do
             ts <- lastServerTime
             cfg <- readIORef cfgRef
-            orders <- FCoin.orderRequest' cfg ts $ GetOrders (toString sym) ["submitted", "partial_filled"]
+            orders <- FCoin.orderRequest' cfg ts $ GetOrders (mkSymbol $ toString sym) ["submitted", "partial_filled"]
             let sellorder = [order | order <- orders, _odSide order == "sell", _odSource order /= "web"]
                 buyorder  = [order | order <- orders, _odSide order == "buy", _odSource order /= "web"] 
             writeIORef refSellOrder sellorder
@@ -163,7 +163,7 @@ initRepl = do
         newOrder dir sym p a = do
             ts <- lastServerTime
             cfg <- readIORef cfgRef
-            oid <- FCoin.orderRequest cfg ts $ dir (toString sym) (Price $ toDouble p) (Amount $ toDouble a)
+            oid <- FCoin.orderRequest cfg ts $ dir (mkSymbol $ toString sym) (Price $ toDouble p) (Amount $ toDouble a)
             putStrLn $ show oid
             return $ "ok"
           where
@@ -177,6 +177,13 @@ initRepl = do
             ret <- FCoin.orderRequest' cfg ts $ CancelOrder $ toString oid
             putStrLn $ show ret
             return $ toText $ show ret
+        
+        getDepthAmount :: _ -> Integer -> Repl Double
+        getDepthAmount da i = do
+            depth <- readIORef depthRef
+            let Just (Amount p) = depth ^? da . ix (fromInteger i - 1) . amount
+            return p
+
 
     loadNativeModule ("fcoin",
                        [ $(defRNativeQ "get-orders" [t| Text -> Text |] [| orders |])
@@ -187,6 +194,8 @@ initRepl = do
                        , $(defRNativeQ "buy" [t| Text -> Decimal -> Decimal -> Text |] [| newOrder Buy |])
                        , $(defRNativeQ "cancel-order" [t| Text -> Text |] [| cancelOrder |])
                        , defRNative "get-balance" getBalance (funType (tTyObject TyAny) []) "get balance"
+                       , $(defRNativeQ "sell-amount" [t| Integer -> Decimal |] [| getDepthAmount dAsks |])
+                       , $(defRNativeQ "buy-amount" [t| Integer -> Decimal |] [| getDepthAmount dBids |])
                        ])
 
 
