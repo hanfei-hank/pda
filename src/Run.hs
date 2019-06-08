@@ -16,18 +16,10 @@ import Seal.Prelude
 import Seal.Lang.Clj.Repl 
 import Seal.Lang.Clj.TH 
 import Seal.Lang.Clj.Types.Runtime
-import Text.Mustache
-import Text.ProjectTemplate
 
-import Service.TCPProxy
 import Service.FCoin.API
 import qualified Service.FCoin.Impl as FCoin
 
-
-proxy :: Text -> Integer -> Integer -> Repl Text
-proxy host port proxyPort = do
-    liftIO $ tcpProxy (encodeUtf8 host) (fromInteger port) (fromInteger proxyPort)
-    return "proxy started!"
 
 serverTime :: Repl Integer
 serverTime = do
@@ -39,16 +31,8 @@ sleep :: Integer -> Repl Text
 sleep ms = do
     threadDelay $ fromInteger ms * 1000
     return "ok"
--- render :: Text -> Text -> Repl Text
--- render templateFile targetFile = liftIO $ do
---   compiled <- localAutomaticCompile $ toString templateFile
---   case compiled of
---     Left err -> return $ toText err
---     Right template -> do
---       writeFileUtf8 (toString targetFile) $ substituteValue template value
---       return "success!"
 
-makeNativeModule "user" ['proxy, 'serverTime, 'sleep]
+makeNativeModule "user" ['serverTime, 'sleep]
 
 initRepl :: Repl ()
 initRepl = do

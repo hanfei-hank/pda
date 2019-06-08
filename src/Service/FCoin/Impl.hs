@@ -63,7 +63,7 @@ start tdepth symbol = do
           putTextLn "starting web socket"
           runSecureClient "api.fcoin.com" 443 "/v2/ws" (app tdepth symbol)
           `catchAny` \e -> do
-            putTextLn $ "webservice stopped!" <> toText (show e)
+            putTextLn $ "web socket stopped!" <> toText (show e)
             threadDelay 1000000
   async $ forever go
   return ()
