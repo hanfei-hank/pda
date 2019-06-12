@@ -4,6 +4,7 @@ module Service.FCoin.API where
 
 import Seal.Prelude
 import Data.Aeson
+import Data.List.Lens
 import Text.Casing
 
 newtype Price = Price Double
@@ -15,18 +16,33 @@ newtype Amount = Amount Double
 data Token 
   = ADA
   | BTC
+  | DASH
   | ETH
   | EOS
   | USDT
   | BSV
+  | ZEC
 
 instance Show Token where
     show ADA = "ada"
     show BTC = "btc"
+    show DASH = "dash"
     show ETH = "eth"
     show EOS = "eos"
     show USDT = "usdt"
     show BSV = "bsv"
+    show ZEC = "zec"
+
+mkToken :: String -> Token
+mkToken "ada" = ADA
+mkToken "btc" = BTC
+mkToken "dash" = DASH
+mkToken "eth" = ETH
+mkToken "eos" = EOS
+mkToken "usdt" = USDT
+mkToken "bsv" = BSV
+mkToken "zec" = ZEC
+mkToken s = error $ toText $ "unknown token: " <> s
 
 data Symbol = Symbol !Token !Token
 
@@ -34,15 +50,11 @@ instance Show Symbol where
     show (Symbol t1 t2) = show t1 <> show t2
 
 mkSymbol :: String -> Symbol
-mkSymbol = \case
-    "eosbtc"  -> eosbtc
-    "eoseth"  -> eoseth
-    "eosusdt" -> eosusdt
-    "bsvusdt" -> bsvusdt
-    s         -> error $ toText $ "unknown symbol: " <> s
-
-eosbtc, eoseth, eosusdt, bsvusdt :: Symbol
-eosbtc = Symbol EOS BTC;  eoseth = Symbol EOS ETH;  eosusdt = Symbol EOS USDT;  bsvusdt = Symbol BSV USDT
+mkSymbol s 
+    | Just a <- s ^? suffixed "btc" = Symbol (mkToken a) BTC
+    | Just a <- s ^? suffixed "eth" = Symbol (mkToken a) ETH
+    | Just a <- s ^? suffixed "usdt" = Symbol (mkToken a) USDT
+    | otherwise = error $ toText $ "unknown symbol: " <> s
 
 -- 价格精度
 pricePrec :: Symbol -> Int
@@ -52,6 +64,9 @@ pricePrec = \case
     Symbol EOS USDT -> 3
     Symbol EOS BTC  -> 7
     symbol          -> error $ toText $ "unknown symbol prec:" <> show symbol
+
+data DepthLevel = L20 | L150
+  deriving (Show)
 
 data Item = Item {
     _price :: Price

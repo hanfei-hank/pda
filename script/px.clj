@@ -2,7 +2,7 @@
 
 (def tick (atom 0))
 
-(defn- cancel [order]
+(defn cancel [order]
     (printf "cancel order : {} " order)
     (cancel-order (:id order)))
 

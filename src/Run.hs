@@ -26,7 +26,6 @@ serverTime = do
     liftIO $ FCoin.serverTime
     -- return "ok"
 
-    
 sleep :: Integer -> Repl Text
 sleep ms = do
     threadDelay $ fromInteger ms * 1000
@@ -86,23 +85,29 @@ initRepl = do
               | otherwise -> throwString $ "unknown native var: " <> toString n
 
     tdepth <- newTVarIO def
+    tts <- newTVarIO def
     cfgRef <- newIORef $ APIConfig "" ""
 
     let
-        setApi :: Text -> Text -> Text -> Repl Text
-        setApi key secret symbol = do
+        setApi :: Text -> Text -> Repl Text
+        setApi key secret = do
             writeIORef cfgRef $ APIConfig (encodeUtf8 key) (encodeUtf8 secret)
+            -- liftIO $ FCoin.start tdepth symbol
+            return "ok"
+        
+        subTopic :: Text -> Repl Text
+        subTopic symbol = do
             liftIO $ FCoin.start tdepth symbol
             return "ok"
 
+
         lastServerTime :: Repl Integer
-        lastServerTime = do
-            depth <- readTVarIO tdepth
-            return $ depth ^. dts
+        lastServerTime = readTVarIO tts
 
         orders :: Text -> Repl Text
         orders sym = do
-            ts <- lastServerTime
+            ts <- serverTime
+            atomically $ writeTVar tts ts
             cfg <- readIORef cfgRef
             orders <- FCoin.orderRequest' cfg ts $ GetOrders (mkSymbol $ toString sym) ["submitted", "partial_filled"]
             let sellorder = [order | order <- orders, _odSide order == "sell", _odSource order /= "web"]
@@ -143,6 +148,11 @@ initRepl = do
             writeIORef depthRef d
             return "ok"
 
+        getMarket150 :: Text -> Repl Text
+        getMarket150 sym = do
+            liftIO (FCoin.getDepth sym) >>= writeIORef depthRef
+            return "ok"
+
         newOrder :: _ -> Text -> Decimal -> Decimal -> Repl Text
         newOrder dir sym p a = do
             ts <- lastServerTime
@@ -168,18 +178,40 @@ initRepl = do
             let Just (Amount p) = depth ^? da . ix (fromInteger i - 1) . amount
             return p
 
+        getDepthPrice :: _ -> Integer -> Repl Double
+        getDepthPrice da i = do
+            -- putStrLn $ "get price " <> show i
+            depth <- readIORef depthRef
+            let Just (Price p) = depth ^? da . ix (fromInteger i - 1) . price
+            return p
+
+        buyDepthLength :: Repl Integer
+        buyDepthLength = do
+            depth <- readIORef depthRef
+            return $ toInteger @Int $ length $ depth ^. dBids 
+
+        sellDepthLength :: Repl Integer
+        sellDepthLength = do
+            depth <- readIORef depthRef
+            return $ toInteger @Int $ length $ depth ^. dAsks 
 
     loadNativeModule ("fcoin",
                        [ $(defRNativeQ "get-orders" [t| Text -> Text |] [| orders |])
                        , $(defRNativeQ "get-order" [t| Text -> Text |] [| getOrder |])
-                       , $(defRNativeQ "set-api" [t| Text -> Text -> Text -> Text |] [| setApi |])
+                       , $(defRNativeQ "set-api" [t| Text -> Text -> Text |] [| setApi |])
+                       , $(defRNativeQ "sub-topic" [t| Text -> Text |] [| subTopic |])
                        , $(defRNativeQ "get-market" [t| Text -> Text |] [| getMarket |])
+                       , $(defRNativeQ "get-market-150" [t| Text -> Text |] [| getMarket150 |])
                        , $(defRNativeQ "sell" [t| Text -> Decimal -> Decimal -> Text |] [| newOrder Sell |])
                        , $(defRNativeQ "buy" [t| Text -> Decimal -> Decimal -> Text |] [| newOrder Buy |])
                        , $(defRNativeQ "cancel-order" [t| Text -> Text |] [| cancelOrder |])
                        , defRNative "get-balance" getBalance (funType (tTyObject TyAny) []) "get balance"
                        , $(defRNativeQ "sell-amount" [t| Integer -> Decimal |] [| getDepthAmount dAsks |])
                        , $(defRNativeQ "buy-amount" [t| Integer -> Decimal |] [| getDepthAmount dBids |])
+                       , $(defRNativeQ "sell-price" [t| Integer -> Decimal |] [| getDepthPrice dAsks |])
+                       , $(defRNativeQ "buy-price" [t| Integer -> Decimal |] [| getDepthPrice dBids |])
+                       , $(defRNativeQ "buy-depth-len" [t| Integer |] [| buyDepthLength |])
+                       , $(defRNativeQ "sell-depth-len" [t| Integer |] [| sellDepthLength |])
                        ])
 
 
