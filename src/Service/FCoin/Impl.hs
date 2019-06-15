@@ -25,8 +25,8 @@ sign secret msg =
         let digest :: Digest SHA1 = hmacGetDigest $ hmac secret $ B64.encode msg
         in B64.encode $ ByteArray.convert digest
 
-app :: TVar Depth -> Text -> WS.ClientApp ()
-app tdepth symbol conn = do
+app :: TVar Depth -> TVar Integer -> Text -> WS.ClientApp ()
+app tdepth tts symbol conn = do
     putTextLn "Connected!"
 
     -- Read from stdin and write to WS
@@ -50,18 +50,20 @@ app tdepth symbol conn = do
                         go (n+1) ts
                     Just depth  -> do
                         -- putTextLn $ toText $ show s
-                        atomically $ writeTVar tdepth depth
+                        atomically $ do
+                            writeTVar tdepth depth
+                            writeTVar tts $ depth ^. dts
                         go (n+1) (_dts depth)
     
     go 0 0
     
   
 --------------------------------------------------------------------------------
-start :: TVar Depth -> Text -> IO ()
-start tdepth symbol = do
+start :: TVar Depth -> TVar Integer -> Text -> IO ()
+start tdepth tts symbol = do
   let go = do
           putTextLn "starting web socket"
-          runSecureClient "api.fcoin.com" 443 "/v2/ws" (app tdepth symbol)
+          runSecureClient "api.fcoin.com" 443 "/v2/ws" (app tdepth tts symbol)
           `catchAny` \e -> do
             putTextLn $ "web socket stopped!" <> toText (show e)
             threadDelay 1000000
@@ -75,9 +77,9 @@ serverTime = do
     Just (response :: Integer) <- rpData . getResponseBody <$> httpJSON request
     return response
 
-getDepth :: Text -> IO Depth
-getDepth symbol= do
-    let request = fromString $ "GET https://api.fcoin.com/v2/market/depth/L150/" <> toString symbol
+getDepth :: DepthLevel -> Text -> IO Depth
+getDepth dl symbol= do
+    let request = fromString $ "GET https://api.fcoin.com/v2/market/depth/" <> show dl <> "/" <> toString symbol
     Just (response :: Depth) <- rpData . getResponseBody <$> httpJSON request
     -- putStrLn $ show response
     return response    
