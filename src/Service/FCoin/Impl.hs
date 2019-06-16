@@ -97,7 +97,7 @@ orderRequest' cfg ts req = do
 orderRequest :: (MonadIO m, FromJSON a) => APIConfig -> Integer -> OrderRequest a -> m (Either Text a)
 orderRequest APIConfig{..} ts req = liftIO $ case req of
     GetOrders sym sts -> do
-        call $ get $ "https://api.fcoin.com/v2/orders?limit=20&states=" <> mconcat (intersperse "," sts) <> "&symbol=" <> show sym
+        call $ get $ "https://api.fcoin.com/v2/orders?limit=60&states=" <> mconcat (intersperse "," sts) <> "&symbol=" <> show sym
     GetOrder odID -> do
         call $ get $ "https://api.fcoin.com/v2/orders/" <> odID
     CancelOrder odID -> do
