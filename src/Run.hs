@@ -148,12 +148,15 @@ initRepl = do
             writeIORef depthRef d
             return "ok"
 
-        getMarketWithDepth :: DepthLevel -> Text -> Repl Text
+        getMarketWithDepth :: DepthLevel -> Text -> Repl Bool
         getMarketWithDepth dl sym = do
-            depth <- liftIO (FCoin.getDepth dl sym)
-            writeIORef depthRef depth
-            atomically $ writeTVar tts $ depth ^. dts
-            return "ok"
+            mdepth <- liftIO (FCoin.getDepth dl sym)
+            case mdepth of
+                Nothing -> return False
+                Just depth -> do
+                    writeIORef depthRef depth
+                    atomically $ writeTVar tts $ depth ^. dts
+                    return True
 
         newOrder :: _ -> Text -> Decimal -> Decimal -> Repl Text
         newOrder dir sym p a = do
@@ -203,8 +206,8 @@ initRepl = do
                        , $(defRNativeQ "set-api" [t| Text -> Text -> Text |] [| setApi |])
                        , $(defRNativeQ "sub-topic" [t| Text -> Text |] [| subTopic |])
                        , $(defRNativeQ "get-market" [t| Text -> Text |] [| getMarket |])
-                       , $(defRNativeQ "get-market-20" [t| Text -> Text |] [| getMarketWithDepth L20 |])
-                       , $(defRNativeQ "get-market-150" [t| Text -> Text |] [| getMarketWithDepth L150 |])
+                       , $(defRNativeQ "get-market-20" [t| Text -> Bool |] [| getMarketWithDepth L20 |])
+                       , $(defRNativeQ "get-market-150" [t| Text -> Bool |] [| getMarketWithDepth L150 |])
                        , $(defRNativeQ "sell" [t| Text -> Decimal -> Decimal -> Text |] [| newOrder Sell |])
                        , $(defRNativeQ "buy" [t| Text -> Decimal -> Decimal -> Text |] [| newOrder Buy |])
                        , $(defRNativeQ "cancel-order" [t| Text -> Text |] [| cancelOrder |])

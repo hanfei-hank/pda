@@ -77,12 +77,10 @@ serverTime = do
     Just (response :: Integer) <- rpData . getResponseBody <$> httpJSON request
     return response
 
-getDepth :: DepthLevel -> Text -> IO Depth
+getDepth :: DepthLevel -> Text -> IO (Maybe Depth)
 getDepth dl symbol= do
     let request = fromString $ "GET https://api.fcoin.com/v2/market/depth/" <> show dl <> "/" <> toString symbol
-    Just (response :: Depth) <- rpData . getResponseBody <$> httpJSON request
-    -- putStrLn $ show response
-    return response    
+    rpData . getResponseBody <$> httpJSON request
 
 buy, sell, limit :: Text
 buy = "buy";    sell = "sell";  limit = "limit"
